@@ -56,8 +56,8 @@ jobs:
         working-directory: terraform/backend
         run: |
           echo "🔍 Extracting Terraform outputs..."
-          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)
-          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)
+          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name | grep -Eo '^[a-zA-Z0-9._\-]+$' | head -n 1)
+          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name | grep -Eo '^[a-zA-Z0-9._\-]+$' | head -n 1)
 
           # בדיקת תקינות הערכים
           if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
