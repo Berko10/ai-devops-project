@@ -72,7 +72,7 @@ module "alb" {
 
   security_groups = [aws_security_group.alb_sg.id]
 
-  # הגדרת קבוצות היעד כמפה, כך אין hardcoding בגישה
+  # הגדרת קבוצות היעד
   target_groups = {
     "${var.alb_target_group_key}" = {
       name_prefix      = var.alb_target_group_key
@@ -86,17 +86,16 @@ module "alb" {
     }
   }
 
-  # הגדרת ה-Listener בהתאם למפתח שבחרנו
+  # הגדרת listeners בתוך המודול ALB בצורה הנכונה
   listeners = [
     {
       port     = 80
       protocol = "HTTP"
-      default_action = [
-        {
-          type             = "forward"
-          target_group_arn = module.alb.target_groups[var.alb_target_group_key].arn
-        }
-      ]
+
+      default_action = {
+        type             = "forward"
+        target_group_arn = module.alb.target_groups[var.alb_target_group_key].arn
+      }
     }
   ]
 }
