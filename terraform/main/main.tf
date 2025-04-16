@@ -201,3 +201,6 @@ resource "aws_appautoscaling_policy" "ecs_scaling_policy" {
     }
   }
 }
+resource "aws_ecr_repository" "main" {
+  name = "my-ecr-repo"
+}
