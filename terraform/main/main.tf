@@ -185,7 +185,7 @@ resource "aws_appautoscaling_target" "ecs_target" {
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }
-##
+####
 resource "aws_appautoscaling_policy" "ecs_scaling_policy" {
   name                    = "ecs-scale-policy"
   policy_type             = "TargetTrackingScaling"
