@@ -1,0 +1,36 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfvars
+crash.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+
+# Docker
+*.log
+.docker/
+docker-compose.yml
+
+# AWS Credentials
+*.pem
+*.key
+*.crt
+
+# GitHub Actions
+.github/workflows/*.yml
+
+# IDE-specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Misc
+*.bak
+*.tmp
