@@ -159,7 +159,7 @@ resource "aws_ecs_service" "app" {
   }
 
   load_balancer {
-    target_group_arn = values(module.alb.target_groups)[0].arn
+    target_group_arn = module.alb.target_group_arns[0]
     container_name   = "devops-app"
     container_port   = 5000
   }
