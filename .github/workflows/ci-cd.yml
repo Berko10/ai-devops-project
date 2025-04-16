@@ -64,9 +64,8 @@ jobs:
           echo "🔍 Extracting Terraform outputs..."
 
           # הפקת הערכים
-          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name | sed -e 's/^[^ ]*output -raw //' -e 's/::debug.*//' -e 's/^ *//;s/ *$//')
-          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name | sed -e 's/^[^ ]*output -raw //' -e 's/::debug.*//' -e 's/^ *//;s/ *$//')
-          echo "(TF_BUCKET_NAME=$TF_BUCKET_NAME)" >> $GITHUB_ENV
+          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name 2>/dev/null | grep -Eo '^[a-zA-Z0-9.-]+$')
+          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name 2>/dev/null | grep -Eo '^[a-zA-Z0-9.-]+$')
 
           echo "✅ Outputs extracted:"
           echo "TF_BUCKET_NAME=$TF_BUCKET_NAME"
