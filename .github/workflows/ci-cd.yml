@@ -92,6 +92,8 @@ jobs:
           if [ -n "${{ env.DYNAMO_TABLE_NAME }}" ]; then
             gh secret set DYNAMO_TABLE_NAME --body "${{ env.DYNAMO_TABLE_NAME }}"
           fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 🔧 Login to Amazon ECR
         id: login-ecr
