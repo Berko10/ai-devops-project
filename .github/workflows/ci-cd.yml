@@ -115,7 +115,7 @@ jobs:
         working-directory: terraform/main
         run: |
           ECR_REPO_NAME=$(terraform output -raw ecr_repo_name)
-        #2>/dev/null | grep -v '^[[:space:]]*\[command\]' | head -n 1 | sed 's/::debug::.*//' | tr -d '\r\n' || echo ""
+        # 2>/dev/null | grep -v '^[[:space:]]*\[command\]' | head -n 1 | sed 's/::debug::.*//' | tr -d '\r\n' || echo ""
           if [ -n "$ECR_REPO_NAME" ]; then
             echo "ECR_REPO_NAME=$ECR_REPO_NAME" >> $GITHUB_ENV
           else
