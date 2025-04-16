@@ -51,8 +51,8 @@ jobs:
           echo "🔍 Extracting outputs..."
 
           # Run terraform outputs and capture only the first line
-          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name | sed 's/^ *//;s/ *$//')
-          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name | sed 's/^ *//;s/ *$//')
+          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name | sed 's/::debug.*//;s/^ *//;s/ *$//')
+          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name | sed 's/::debug.*//;s/^ *//;s/ *$//')
 
           # Validate the outputs
           if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
