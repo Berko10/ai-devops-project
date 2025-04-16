@@ -78,8 +78,8 @@ jobs:
           fi
 
           # הזרקת ערכים ל־GitHub Actions env
-          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
-          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
+          echo ("TF_BUCKET_NAME=$TF_BUCKET_NAME") >> $GITHUB_ENV
+          echo ("DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME") >> $GITHUB_ENV
       
       
 
