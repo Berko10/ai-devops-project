@@ -117,7 +117,7 @@ jobs:
           echo "--- Terraform Output (ecr_repo_name) ---"
           terraform output -raw ecr_repo_name 2>/dev/null
           echo "--- End Terraform Output ---"
-          export ECR_REPO_NAME=$(terraform output -raw ecr_repo_name 2>/dev/null | grep -v '^[[:space:]]*\[command\]' | head -n 1 | sed 's/╷//g' | tr -d '\r\n' || echo "")
+          ECR_REPO_NAME=$(terraform output -raw ecr_repo_name 2>/dev/null | grep -v '^[[:space:]]*\[command\]' | head -n 1 | sed 's/╷//g' | tr -d '\r\n')
           echo ECR_REPO_NAME=$ECR_REPO_NAME
           if [ -n "$ECR_REPO_NAME" ]; then
             echo "ECR_REPO_NAME=$ECR_REPO_NAME" >> $GITHUB_ENV
@@ -133,7 +133,9 @@ jobs:
         if: env.ECR_REPO_NAME != ''
         run: |
           IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO_NAME }}:latest
+          echo "בניית תמונת Docker: $IMAGE_URI"
           docker build -t $IMAGE_URI ./app
+          echo "דחיפת תמונת Docker: $IMAGE_URI"
           docker push $IMAGE_URI
 
       - name: 🧪 Run Unit Tests
