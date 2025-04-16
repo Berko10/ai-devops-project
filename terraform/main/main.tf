@@ -87,16 +87,18 @@ module "alb" {
   }
 
   # הגדרת ה-Listener בהתאם למפתח שבחרנו
-  listeners = {
-    http = {
-      port     = 80
-      protocol = "HTTP"
-      default_action = {
-        type             = "forward"
-        target_group_key = var.alb_target_group_key
+  listeners = [
+  {
+    port     = 80
+    protocol = "HTTP"
+    default_actions = [
+      {
+        type              = "forward"
+        target_group_index = 0
       }
-    }
+    ]
   }
+]
 }
 
 # Security Group for ALB
