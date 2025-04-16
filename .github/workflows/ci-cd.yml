@@ -67,6 +67,9 @@ jobs:
           TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name 2>/dev/null | tr -d '\r\n')
           DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name 2>/dev/null | tr -d '\r\n')
 
+          echo "TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)" >> $GITHUB_ENV
+          echo "DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)" >> $GITHUB_ENV
+          
           echo "✅ Outputs extracted:"
           echo "TF_BUCKET_NAME=$TF_BUCKET_NAME"
           echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME"
