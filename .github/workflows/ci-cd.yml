@@ -56,8 +56,8 @@ jobs:
         working-directory: terraform/backend
         run: |
           echo "🔍 Extracting Terraform outputs..."
-          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name | sed 's/^.*output -raw //;s/::debug.*//;s/^ *//;s/ *$//')
-          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name | sed 's/^.*output -raw //;s/::debug.*//;s/^ *//;s/ *$//')
+          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)
+          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)
 
           # בדיקת תקינות הערכים
           if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
@@ -70,8 +70,8 @@ jobs:
           echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
 
           echo "✅ Outputs successfully extracted:"
-          echo "  TF_BUCKET_NAME=$TF_BUCKET_NAME"
-          echo "  DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME"
+          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME"
+          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME"
 
 
       - name: Terraform Init (Main)
