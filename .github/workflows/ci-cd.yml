@@ -56,8 +56,11 @@ jobs:
         working-directory: terraform/backend
         run: |
           echo "🔍 Extracting Terraform outputs..."
-          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name | grep -Eo '^[a-zA-Z0-9._\-]+$' | head -n 1)
-          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name | grep -Eo '^[a-zA-Z0-9._\-]+$' | head -n 1)
+          terraform_output_bucket=$(terraform output -raw tf_state_bucket_name 2>/dev/null || true)
+          terraform_output_table=$(terraform output -raw dynamo_table_name 2>/dev/null || true)
+
+          echo "DEBUG: tf_state_bucket_name='$terraform_output_bucket'"
+          echo "DEBUG: dynamo_table_name='$terraform_output_table'"
 
           # בדיקת תקינות הערכים
           if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
@@ -66,8 +69,8 @@ jobs:
           fi
 
           # שמירת הערכים בקובץ הסביבה
-          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
-          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
+          echo "TF_BUCKET_NAME=$terraform_output_bucket" >> $GITHUB_ENV
+          echo "DYNAMO_TABLE_NAME=$terraform_output_table" >> $GITHUB_ENV
 
           echo "✅ Outputs successfully extracted:"
           echo "TF_BUCKET_NAME=$TF_BUCKET_NAME"
