@@ -37,7 +37,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Remove .terraform directory
-        run: rm -rf .terraform
+        run: rm -rf terraform/.terraform
 
       # Install Terraform
       - name: Install Terraform
@@ -92,11 +92,9 @@ jobs:
           else
             echo "❌ DYNAMO_TABLE_NAME is empty!" && exit 1
           fi
-          
+
           echo "📄 GITHUB_ENV content:"
-          cat $GITHUB_ENV   
-      
-      
+          cat $GITHUB_ENV
 
       - name: Terraform Init (Main)
         working-directory: terraform/main
@@ -105,7 +103,7 @@ jobs:
           echo "Using bucket: $TF_BUCKET_NAME"
           echo "Using dynamodb table: $DYNAMO_TABLE_NAME"
           echo "Using region: $AWS_REGION"
-          
+
           # Initialize Terraform with backend config
           terraform init -reconfigure \
             -backend-config="bucket=$TF_BUCKET_NAME" \
@@ -113,7 +111,7 @@ jobs:
             -backend-config="region=$AWS_REGION" \
             -backend-config="dynamodb_table=$DYNAMO_TABLE_NAME"
 
-      - name: Debug ALB Module Outputs
+      - name: Debug ALB Module Outputs (List Resources)
         working-directory: terraform/main
         run: terraform state list
 
