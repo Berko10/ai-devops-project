@@ -87,16 +87,14 @@ module "alb" {
   }
 
   # הגדרת ה-Listener בהתאם למפתח שבחרנו
-    listeners = [
+  listeners = [
     {
       port     = 80
       protocol = "HTTP"
       default_action {
-        count = 1
         type             = "forward"
         target_group_index = 0
       }
-    ]
     }
   ]
 }
