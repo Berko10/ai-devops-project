@@ -44,16 +44,26 @@ jobs:
           terraform plan -out=tfplan || echo "❌ Plan failed, skipping problematic resources"
           terraform apply -auto-approve || echo "✅ Skipping problematic resources if already exist"
 
-      - name: 🔧 Terraform Output (for environment)
-        id: tf_outputs
+      - name: 🔧 Save Terraform Output to GitHub ENV
         working-directory: terraform/backend
         run: |
           echo "Extracting backend outputs..."
-          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name | tr -d '\r\n')
-          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name | tr -d '\r\n')
-          echo "TF_BUCKET_NAME=${TF_BUCKET_NAME}" >> $GITHUB_ENV
-          echo "DYNAMO_TABLE_NAME=${DYNAMO_TABLE_NAME}" >> $GITHUB_ENV
-          echo "✅ Saved TF_BUCKET_NAME and DYNAMO_TABLE_NAME to ENV"
+
+          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name 2>/dev/null || echo "")
+          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name 2>/dev/null || echo "")
+
+          if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
+            echo "❌ ERROR: One of the outputs is empty! Exiting."
+            exit 1
+          fi
+
+          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
+          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
+
+          echo "✅ Saved outputs to ENV:"
+          echo "  • TF_BUCKET_NAME=$TF_BUCKET_NAME"
+          echo "  • DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME"
+      
 
       - name: Terraform Init (Main)
         working-directory: terraform/main
