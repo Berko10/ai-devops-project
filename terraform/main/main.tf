@@ -91,14 +91,15 @@ module "alb" {
     {
       port     = 80
       protocol = "HTTP"
-      default_action {
-        type             = "forward"
-        target_group_index = 0
-      }
+      default_action = [
+        {
+          type             = "forward"
+          target_group_arn = module.alb.target_groups[var.alb_target_group_key].arn
+        }
+      ]
     }
   ]
 }
-
 
 # Security Group for ALB
 resource "aws_security_group" "alb_sg" {
