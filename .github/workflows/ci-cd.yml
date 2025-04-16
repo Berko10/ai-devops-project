@@ -114,7 +114,11 @@ jobs:
       - name: Extract ECR Outputs
         working-directory: terraform/main
         run: |
+          echo "--- Terraform Output (ecr_repo_name) ---"
+          terraform output -raw ecr_repo_name 2>/dev/null
+          echo "--- End Terraform Output ---"
           export ECR_REPO_NAME=$(terraform output -raw ecr_repo_name 2>/dev/null | grep -v '^[[:space:]]*\[command\]' | head -n 1 | sed 's/╷//g' | tr -d '\r\n' || echo "")
+          echo ECR_REPO_NAME=$ECR_REPO_NAME
           if [ -n "$ECR_REPO_NAME" ]; then
             echo "ECR_REPO_NAME=$ECR_REPO_NAME" >> $GITHUB_ENV
           else
