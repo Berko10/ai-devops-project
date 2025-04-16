@@ -61,8 +61,8 @@ jobs:
 
     # בדיקת תקינות הערכים     
           if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
-            echo "❌ ERROR: One or more outputs are empty!"
-          exit 1
+            echo "X ERROR - One or more outputs are empty!"
+            exit 1
           fi
 
     # שמירת הערכים בקובץ הסביבה     
