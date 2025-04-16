@@ -60,7 +60,6 @@ jobs:
           echo "TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)" >> $GITHUB_ENV
           echo "DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)" >> $GITHUB_ENV
 
-  # אם יש ערכים, הוסף אותם ל-GitHub Env
           if [ -n "$BUCKET_NAME" ]; then
             echo "TF_BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
             echo "✅ Set TF_BUCKET_NAME"
