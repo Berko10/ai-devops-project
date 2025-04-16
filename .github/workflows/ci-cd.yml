@@ -17,7 +17,7 @@ jobs:
       # Configure AWS Defaults
       - name: Set AWS Region Defaults
         run: |
-          AWS_REGION=${{ secrets.AWS_REGION:-"us-east-1" }}
+          AWS_REGION=${{ secrets.AWS_REGION }}
           echo "AWS_REGION=$AWS_REGION" >> $GITHUB_ENV
           echo "AWS_DEFAULT_REGION=$AWS_REGION" >> $GITHUB_ENV
           echo "✅ AWS region set to $AWS_REGION"
