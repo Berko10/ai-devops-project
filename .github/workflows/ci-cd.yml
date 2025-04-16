@@ -63,12 +63,7 @@ jobs:
         working-directory: terraform/backend
         run: |
           TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name | tr -d '\r\n')
-          echo ${TF_BUCKET_NAME}
           DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name | tr -d '\r\n')
-          echo ${DYNAMO_TABLE_NAME}
-          
-          echo "DEBUG - TF_BUCKET_NAME: ${TF_BUCKET_NAME}"
-          echo "DEBUG - DYNAMO_TABLE_NAME: ${DYNAMO_TABLE_NAME}"
 
            # Only add values if not empty
           if [ -n "$TF_BUCKET_NAME" ]; then
@@ -87,8 +82,16 @@ jobs:
 
       - name: 🔑 Set GitHub Secrets (using GitHub CLI)
         run: |
-          gh secret set TF_BUCKET_NAME --body "${{ env.TF_BUCKET_NAME }}"
-          gh secret set DYNAMO_TABLE_NAME --body "${{ env.DYNAMO_TABLE_NAME }}"
+          # Set GitHub token as environment variable
+          echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+          # Only set secrets if they are not empty
+          if [ -n "${{ env.TF_BUCKET_NAME }}" ]; then
+            gh secret set TF_BUCKET_NAME --body "${{ env.TF_BUCKET_NAME }}"
+          fi
+
+          if [ -n "${{ env.DYNAMO_TABLE_NAME }}" ]; then
+            gh secret set DYNAMO_TABLE_NAME --body "${{ env.DYNAMO_TABLE_NAME }}"
+          fi
 
       - name: 🔧 Login to Amazon ECR
         id: login-ecr
