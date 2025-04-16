@@ -62,7 +62,7 @@ resource "aws_ecr_repository" "app_repo" {
 # Load Balancer
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
-  version = "9.1.0"
+  version = "8.0.0"
 
   name               = "devops-alb"
   load_balancer_type = "application"
@@ -87,19 +87,20 @@ module "alb" {
   }
 
   # הגדרת ה-Listener בהתאם למפתח שבחרנו
-  listeners = [
-  {
-    port     = 80
-    protocol = "HTTP"
-    default_action = [
-      {
-        type              = "forward"
+    listeners = [
+    {
+      port     = 80
+      protocol = "HTTP"
+      default_action {
+        count = 1
+        type             = "forward"
         target_group_index = 0
       }
     ]
-  }
-]
+    }
+  ]
 }
+
 
 # Security Group for ALB
 resource "aws_security_group" "alb_sg" {
