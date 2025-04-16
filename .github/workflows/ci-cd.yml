@@ -50,14 +50,9 @@ jobs:
         run: |
           echo "🔍 Extracting outputs..."
 
-          # Get raw outputs and clean them up
-          TF_OUTPUT=$(terraform output -raw tf_state_bucket_name || echo "")
-          # Extract just the bucket name from the output (everything before the first ::)
-          TF_BUCKET_NAME=$(echo "$TF_OUTPUT" | cut -d ':' -f1)
-
-          DYN_OUTPUT=$(terraform output -raw dynamo_table_name || echo "")
-          # Extract just the table name from the output (everything before the first ::)
-          DYNAMO_TABLE_NAME=$(echo "$DYN_OUTPUT" | cut -d ':' -f1)
+          # Run terraform outputs and capture only the first line
+          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name | head -n 1 | tr -d '\r\n')
+          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name | head -n 1 | tr -d '\r\n')
 
           # Validate the outputs
           if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
@@ -65,18 +60,14 @@ jobs:
             exit 1
           fi
 
-          # Save to environment variables for later steps
-          # Use export for immediate availability in this script
-          export TF_BUCKET_NAME
-          export DYNAMO_TABLE_NAME
-
-          # Set for future steps
-          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
-          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
+          # Write to GitHub env file with proper syntax (key=value)
+          # Note: Add quotes around values and no spaces
+          echo "TF_BUCKET_NAME=${TF_BUCKET_NAME}" > "$GITHUB_ENV"
+          echo "DYNAMO_TABLE_NAME=${DYNAMO_TABLE_NAME}" >> "$GITHUB_ENV"
 
           echo "✅ Saved outputs:"
-          echo "  • TF_BUCKET_NAME=$TF_BUCKET_NAME"
-          echo "  • DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME"
+          echo "  • TF_BUCKET_NAME=${TF_BUCKET_NAME}"
+          echo "  • DYNAMO_TABLE_NAME=${DYNAMO_TABLE_NAME}"
 
       - name: Terraform Init (Main)
         working-directory: terraform/main
