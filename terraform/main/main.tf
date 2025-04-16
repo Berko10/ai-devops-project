@@ -62,7 +62,7 @@ resource "aws_ecr_repository" "app_repo" {
 # Load Balancer
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
-  version = "8.0.0"
+  version = "9.1.0"
 
   name               = "devops-alb"
   load_balancer_type = "application"
@@ -72,33 +72,30 @@ module "alb" {
 
   security_groups = [aws_security_group.alb_sg.id]
 
-  # הגדרת קבוצות היעד
-  target_groups = {
-    "${var.alb_target_group_key}" = {
+  target_groups = [
+    {
       name_prefix      = var.alb_target_group_key
       backend_protocol = "HTTP"
       backend_port     = 5000
       target_type      = "ip"
-      create_attachment = false
       health_check = {
         path = "/"
       }
     }
-  }
+  ]
 
-  # הגדרת listeners בתוך המודול ALB בצורה הנכונה
   listeners = [
     {
       port     = 80
       protocol = "HTTP"
-
       default_action = {
         type             = "forward"
-        target_group_arn = module.alb.target_groups[var.alb_target_group_key].arn
+        target_group_index = 0
       }
     }
   ]
 }
+
 
 # Security Group for ALB
 resource "aws_security_group" "alb_sg" {
@@ -164,8 +161,7 @@ resource "aws_ecs_service" "app" {
   }
 
   load_balancer {
-    # גישה לדינמיות: שימוש במפתח מהמשתנה
-    target_group_arn = module.alb.target_groups[var.alb_target_group_key].arn
+    target_group_arn = module.alb.target_group_arns[0]
     container_name   = "devops-app"
     container_port   = 5000
   }
