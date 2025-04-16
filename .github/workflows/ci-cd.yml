@@ -63,7 +63,9 @@ jobs:
         working-directory: terraform/backend
         run: |
           TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)
+          echo ${TF_BUCKET_NAME}
           DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)
+          echo ${DYNAMO_TABLE_NAME}
           
           echo "DEBUG - TF_BUCKET_NAME: ${TF_BUCKET_NAME}"
           echo "DEBUG - DYNAMO_TABLE_NAME: ${DYNAMO_TABLE_NAME}"
