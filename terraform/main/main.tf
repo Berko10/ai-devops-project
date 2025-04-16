@@ -10,8 +10,9 @@ module "vpc" {
   name = "devops-vpc"
   cidr = "10.0.0.0/16"
 
-  azs             = ["${var.aws_region}a", "${var.aws_region}b"]
-  public_subnets  = ["10.0.1.0/24", "10.0.2.0/24"]
+  azs            = ["${var.aws_region}a", "${var.aws_region}b"]
+  public_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
+
   enable_dns_hostnames = true
   enable_nat_gateway   = false
 
@@ -63,7 +64,7 @@ module "alb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "9.1.0"
 
-  name = "devops-alb"
+  name               = "devops-alb"
   load_balancer_type = "application"
 
   vpc_id  = module.vpc.vpc_id
@@ -71,28 +72,31 @@ module "alb" {
 
   security_groups = [aws_security_group.alb_sg.id]
 
-  target_groups = [
-    {
-      name_prefix      = "devops"
+  # הגדרת קבוצות היעד כמפה, כך אין hardcoding בגישה
+  target_groups = {
+    "${var.alb_target_group_key}" = {
+      name_prefix      = var.alb_target_group_key
       backend_protocol = "HTTP"
       backend_port     = 5000
       target_type      = "ip"
+      create_attachment = false
       health_check = {
         path = "/"
       }
     }
-  ]
+  }
 
-  listeners = [
-    {
+  # הגדרת ה-Listener בהתאם למפתח שבחרנו
+  listeners = {
+    http = {
       port     = 80
       protocol = "HTTP"
       default_action = {
         type             = "forward"
-        target_group_index = 0
+        target_group_key = var.alb_target_group_key
       }
     }
-  ]
+  }
 }
 
 # Security Group for ALB
@@ -159,7 +163,8 @@ resource "aws_ecs_service" "app" {
   }
 
   load_balancer {
-    target_group_arn = module.alb.target_group_arns[0]
+    # גישה לדינמיות: שימוש במפתח מהמשתנה
+    target_group_arn = module.alb.target_groups[var.alb_target_group_key].arn
     container_name   = "devops-app"
     container_port   = 5000
   }
@@ -175,7 +180,7 @@ resource "aws_appautoscaling_target" "ecs_target" {
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }
-##
+
 resource "aws_appautoscaling_policy" "ecs_scaling_policy" {
   name                    = "ecs-scale-policy"
   policy_type             = "TargetTrackingScaling"

@@ -33,3 +33,9 @@ variable "tfstate_path" {
   default = "main/terraform.tfstate"
 }
 
+variable "alb_target_group_key" {
+  description = "המפתח במפת קבוצות היעד במודול ALB (ברירת מחדל: devops)"
+  default     = "devops"
+}
+
+
