@@ -18,6 +18,7 @@ jobs:
           echo "Checking AWS region..."
           if [ -z "${{ secrets.AWS_REGION }}" ]; then
             echo "AWS_DEFAULT_REGION=us-east-1" >> $GITHUB_ENV
+            echo "AWS_REGION=us-east-1" >> $GITHUB_ENV
             echo "✅ No region provided — using default: us-east-1"
           else
             echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> $GITHUB_ENV
@@ -48,39 +49,43 @@ jobs:
         id: extract-backend-outputs
         working-directory: terraform/backend
         run: |
-            echo "🔍 Extracting outputs..."
-            TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)
-            DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)
-            
-            if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
-              echo "❌ ERROR: One or more outputs are empty!"
-              exit 1
-            fi
-            
-            echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
-            echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
-            
-            echo "✅ Saved outputs:"
-            echo "  • TF_BUCKET_NAME=$TF_BUCKET_NAME"
-            echo "  • DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME"
-      
+          echo "🔍 Extracting outputs..."
+          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)
+          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)
+          
+          if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
+            echo "❌ ERROR: One or more outputs are empty!"
+            exit 1
+          fi
+          
+          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_OUTPUT
+          
+          # Also save to environment for other steps
+          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
+          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
+          
+          echo "✅ Saved outputs:"
+          echo "  • TF_BUCKET_NAME=$TF_BUCKET_NAME"
+          echo "  • DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME"
 
       - name: Terraform Init (Main)
         working-directory: terraform/main
         run: |
           terraform init -reconfigure \
-            -backend-config="bucket=${TF_BUCKET_NAME}" \
+            -backend-config="bucket=${{ env.TF_BUCKET_NAME }}" \
             -backend-config="key=main/terraform.tfstate" \
-            -backend-config="region=${AWS_REGION}" \
-            -backend-config="dynamodb_table=${DYNAMO_TABLE_NAME}"
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ env.DYNAMO_TABLE_NAME }}"
 
       - name: 🔄 Get ECR repo name from Terraform output
         id: get-ecr-repo
         working-directory: terraform/main
         run: |
-            ECR_REPO_NAME=$(terraform output -raw ecr_repo_name | tr -d '\r\n')
-            echo "ECR_REPO_NAME=${ECR_REPO_NAME}" >> $GITHUB_ENV
-            echo "✅ Set ECR_REPO_NAME to: ${ECR_REPO_NAME}"
+          ECR_REPO_NAME=$(terraform output -raw ecr_repo_name | tr -d '\r\n')
+          echo "ECR_REPO_NAME=$ECR_REPO_NAME" >> $GITHUB_OUTPUT
+          echo "ECR_REPO_NAME=$ECR_REPO_NAME" >> $GITHUB_ENV
+          echo "✅ Set ECR_REPO_NAME to: $ECR_REPO_NAME"
 
       - name: 🔧 Login to Amazon ECR
         id: login-ecr
