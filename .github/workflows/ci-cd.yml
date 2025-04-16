@@ -50,28 +50,29 @@ jobs:
           terraform plan -out=tfplan || echo "❌ Plan failed, skipping problematic resources"
           terraform apply -auto-approve || echo "✅ Skipping problematic resources if already exist"
 
+
+      # Extract Backend Outputs
       - name: Extract Backend Outputs
         working-directory: terraform/backend
         run: |
           echo "🔍 Extracting Terraform outputs..."
-
-        # ניקוי הערכים שהתקבלו מ-Terraform
+          # ניקוי הערכים שהתקבלו מ-Terraform
           TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name | grep -v "::debug" | grep -oP '^[^:]+')
           DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name | grep -v "::debug" | grep -oP '^[^:]+')
 
-    # בדיקת תקינות הערכים     
+          # בדיקת תקינות הערכים
           if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
-            echo "X ERROR - One or more outputs are empty!"
+            echo "❌ ERROR - One or more outputs are empty!"
             exit 1
           fi
 
-    # שמירת הערכים בקובץ הסביבה     
-         echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
-         echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
+          # שמירת הערכים בקובץ הסביבה
+          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
+          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
 
-         echo "✅ Outputs successfully extracted:"
-         echo "  TF_BUCKET_NAME=$TF_BUCKET_NAME"
-         echo "  DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME"
+          echo "✅ Outputs successfully extracted:"
+          echo "  TF_BUCKET_NAME=$TF_BUCKET_NAME"
+          echo "  DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME"
 
 
       - name: Terraform Init (Main)
