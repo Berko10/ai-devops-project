@@ -64,11 +64,7 @@ jobs:
         run: |
           TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)
           DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)
-          
-          # Debug the outputs
-          echo "TF_BUCKET_NAME=${TF_BUCKET_NAME}"
-          echo "DYNAMO_TABLE_NAME=${DYNAMO_TABLE_NAME}"
-          
+                    
           echo "TF_BUCKET_NAME=${TF_BUCKET_NAME}" >> $GITHUB_ENV
           echo "DYNAMO_TABLE_NAME=${DYNAMO_TABLE_NAME}" >> $GITHUB_ENV
 
