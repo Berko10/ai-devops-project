@@ -50,20 +50,23 @@ jobs:
         working-directory: terraform/backend
         run: |
           echo "🔍 Extracting outputs..."
-          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)
-          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)
+          
+          # Capture clean outputs without debug information
+          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name | grep -v "::debug::" | tr -d '\r\n')
+          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name | grep -v "::debug::" | tr -d '\r\n')
           
           if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
             echo "❌ ERROR: One or more outputs are empty!"
             exit 1
           fi
           
-          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_OUTPUT
-          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_OUTPUT
+          # Use the GitHub Environment Files format
+          echo "TF_BUCKET_NAME=${TF_BUCKET_NAME}" >> "$GITHUB_ENV"
+          echo "DYNAMO_TABLE_NAME=${DYNAMO_TABLE_NAME}" >> "$GITHUB_ENV"
           
-          # Also save to environment for other steps
-          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
-          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
+          # Also set step outputs
+          echo "tf_bucket_name=${TF_BUCKET_NAME}" >> "$GITHUB_OUTPUT"
+          echo "dynamo_table_name=${DYNAMO_TABLE_NAME}" >> "$GITHUB_OUTPUT"
           
           echo "✅ Saved outputs:"
           echo "  • TF_BUCKET_NAME=$TF_BUCKET_NAME"
@@ -82,9 +85,15 @@ jobs:
         id: get-ecr-repo
         working-directory: terraform/main
         run: |
-          ECR_REPO_NAME=$(terraform output -raw ecr_repo_name | tr -d '\r\n')
-          echo "ECR_REPO_NAME=$ECR_REPO_NAME" >> $GITHUB_OUTPUT
-          echo "ECR_REPO_NAME=$ECR_REPO_NAME" >> $GITHUB_ENV
+          # Clean output to avoid debug messages
+          ECR_REPO_NAME=$(terraform output -raw ecr_repo_name | grep -v "::debug::" | tr -d '\r\n')
+          
+          # Set environment variable
+          echo "ECR_REPO_NAME=${ECR_REPO_NAME}" >> "$GITHUB_ENV"
+          
+          # Set step output
+          echo "ecr_repo_name=${ECR_REPO_NAME}" >> "$GITHUB_OUTPUT"
+          
           echo "✅ Set ECR_REPO_NAME to: $ECR_REPO_NAME"
 
       - name: 🔧 Login to Amazon ECR
