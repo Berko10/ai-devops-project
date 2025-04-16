@@ -115,7 +115,11 @@ jobs:
 
       - name: Debug ALB Module Outputs
         working-directory: terraform/main
-        run: terraform output -json alb
+        run: terraform state list
+
+      - name: Debug ALB Module Outputs (Details)
+        working-directory: terraform/main
+        run: terraform state show module.alb.load_balancer
 
       - name: Terraform Plan (Main)
         working-directory: terraform/main
