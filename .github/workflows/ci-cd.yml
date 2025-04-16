@@ -36,6 +36,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Remove .terraform directory
+        run: rm -rf .terraform
+
       # Install Terraform
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v1
@@ -109,6 +112,10 @@ jobs:
             -backend-config="key=main/terraform.tfstate" \
             -backend-config="region=$AWS_REGION" \
             -backend-config="dynamodb_table=$DYNAMO_TABLE_NAME"
+
+      - name: Debug ALB Module Outputs
+        working-directory: terraform/main
+        run: terraform output -json alb
 
       - name: Terraform Plan (Main)
         working-directory: terraform/main
