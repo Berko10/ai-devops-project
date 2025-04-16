@@ -62,7 +62,7 @@ resource "aws_ecr_repository" "app_repo" {
 # Load Balancer
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
-  version = "9.1.0"
+  version = "8.0.0"
 
   name               = "devops-alb"
   load_balancer_type = "application"
@@ -78,7 +78,6 @@ module "alb" {
       backend_protocol = "HTTP"
       backend_port     = 5000
       target_type      = "ip"
-      create_attachment = false # הוספתי את זה כדי למנוע תלות מוקדמת
       health_check = {
         path = "/"
       }
@@ -89,7 +88,7 @@ module "alb" {
     {
       port     = 80
       protocol = "HTTP"
-      default_action = {
+      default_action {
         type             = "forward"
         target_group_index = 0
       }
@@ -162,7 +161,7 @@ resource "aws_ecs_service" "app" {
   }
 
   load_balancer {
-    target_group_arn = module.alb.target_group_arn
+    target_group_arn = module.alb.target_group_arns[0] # נשאיר את זה ככה כי בגרסה הזו זה עובד עם רשימה
     container_name   = "devops-app"
     container_port   = 5000
   }
