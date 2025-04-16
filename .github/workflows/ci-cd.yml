@@ -114,12 +114,12 @@ jobs:
       - name: Extract ECR Outputs
         working-directory: terraform/main
         run: |
-          export ECR_REPO_NAME=$(terraform output -raw ecr_repo_name 2>/dev/null | grep -v '^[[:space:]]*\[command\]' | head -n 1 | sed 's/::debug::.*//' | tr -d '\r\n' || echo "")
+          ECR_REPO_NAME=$(terraform output -raw ecr_repo_name)
+        #2>/dev/null | grep -v '^[[:space:]]*\[command\]' | head -n 1 | sed 's/::debug::.*//' | tr -d '\r\n' || echo ""
           if [ -n "$ECR_REPO_NAME" ]; then
             echo "ECR_REPO_NAME=$ECR_REPO_NAME" >> $GITHUB_ENV
-            echo "✅ ECR repo name extracted: $ECR_REPO_NAME"
           else
-            echo "❌ WARNING: ECR repo name not found!"
+            echo "❌ ECR_REPO_NAME is empty!" && exit 1
           fi
 
       - name: 🔧 Login to Amazon ECR
