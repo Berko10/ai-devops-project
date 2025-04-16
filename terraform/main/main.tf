@@ -78,6 +78,7 @@ module "alb" {
       backend_protocol = "HTTP"
       backend_port     = 5000
       target_type      = "ip"
+      create_attachment = false # הוספתי את זה כדי למנוע תלות מוקדמת
       health_check = {
         path = "/"
       }
@@ -161,7 +162,7 @@ resource "aws_ecs_service" "app" {
   }
 
   load_balancer {
-    target_group_arn = module.alb.target_group_arns[0]
+    target_group_arn = module.alb.target_group_arn
     container_name   = "devops-app"
     container_port   = 5000
   }
