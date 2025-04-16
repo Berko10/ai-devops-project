@@ -10,22 +10,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Configure AWS Defaults
       - name: Set AWS Region Defaults
         run: |
-          echo "Checking AWS region..."
-          if [ -z "${{ secrets.AWS_REGION }}" ]; then
-            echo "AWS_DEFAULT_REGION=us-east-1" >> $GITHUB_ENV
-            echo "AWS_REGION=us-east-1" >> $GITHUB_ENV
-            echo "✅ No region provided — using default: us-east-1"
-          else
-            echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> $GITHUB_ENV
-            echo "AWS_DEFAULT_REGION=${{ secrets.AWS_REGION }}" >> $GITHUB_ENV
-            echo "✅ Using region from secrets: ${{ secrets.AWS_REGION }}"
-          fi
+          AWS_REGION=${{ secrets.AWS_REGION:-"us-east-1" }}
+          echo "AWS_REGION=$AWS_REGION" >> $GITHUB_ENV
+          echo "AWS_DEFAULT_REGION=$AWS_REGION" >> $GITHUB_ENV
+          echo "✅ AWS region set to $AWS_REGION"
 
+      # Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -33,93 +30,77 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # Install Terraform
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: '1.6.6'
 
-      - name: Terraform Init & Backend Setup
+      # Terraform Init & Backend Setup
+      - name: Terraform Backend Init & Apply
         working-directory: terraform/backend
         run: |
           terraform init
-          terraform plan -out=tfplan || echo "❌ Plan failed, skipping problematic resources"
-          terraform apply -auto-approve || echo "✅ Skipping problematic resources if already exist"
+          terraform apply -auto-approve
 
-      - name: 🧾 Extract Backend Outputs
+      # Extract Backend Outputs
+      - name: Extract Backend Outputs
         working-directory: terraform/backend
         run: |
-          echo "🔍 Extracting outputs..."
+          export TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)
+          export DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)
 
-          # Cleaning and extracting Terraform outputs
-          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name 2>/dev/null | sed -e 's/^\[command\].*output -raw //g' -e 's/^ *//g' -e 's/ *$//g')
-          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name 2>/dev/null | sed -e 's/^\[command\].*output -raw //g' -e 's/^ *//g' -e 's/ *$//g')
-        
-          # Validate outputs
-          if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
-          echo "❌ ERROR: One or more outputs are empty!"
-          exit 1
-          fi
-          
-          # Save outputs to environment
-          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> "$GITHUB_ENV"
-          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> "$GITHUB_ENV"
-          
-          echo "✅ Saved outputs:"
-          echo "  • TF_BUCKET_NAME=$TF_BUCKET_NAME"
-          echo "  • DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME"
+          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
+          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
+          echo "✅ Extracted Outputs: TF_BUCKET_NAME=$TF_BUCKET_NAME, DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME"
 
-      - name: Terraform Init (Main)
+      # Terraform Init (Main)
+      - name: Terraform Main Init
         working-directory: terraform/main
         run: |
-          # Print debug info
-          echo "Using bucket: $TF_BUCKET_NAME"
-          echo "Using dynamodb table: $DYNAMO_TABLE_NAME"
-          echo "Using region: $AWS_REGION"
-          
-          # Initialize Terraform with backend config
           terraform init -reconfigure \
-            -backend-config="bucket=$TF_BUCKET_NAME" \
+            -backend-config="bucket=${{ env.TF_BUCKET_NAME }}" \
             -backend-config="key=main/terraform.tfstate" \
-            -backend-config="region=$AWS_REGION" \
-            -backend-config="dynamodb_table=$DYNAMO_TABLE_NAME"
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ env.DYNAMO_TABLE_NAME }}"
+          echo "✅ Terraform main initialized with bucket $TF_BUCKET_NAME and table $DYNAMO_TABLE_NAME"
 
-      - name: 🔄 Get ECR repo name from Terraform output
+      # Extract and Use ECR Outputs
+      - name: Extract ECR Outputs
         working-directory: terraform/main
         run: |
-          # Store the ECR repo name
-          ECR_REPO_NAME=$(terraform output -raw ecr_repo_name || echo "")
-          
-          # Validate the output
-          if [ -z "$ECR_REPO_NAME" ]; then
-            echo "❌ WARNING: ECR repo name output is empty!"
-            # Don't exit with error since we might not have created it yet
-          else
-            # Save for later steps
+          export ECR_REPO_NAME=$(terraform output -raw ecr_repo_name || echo "")
+          if [ -n "$ECR_REPO_NAME" ]; then
             echo "ECR_REPO_NAME=$ECR_REPO_NAME" >> $GITHUB_ENV
-            echo "✅ Set ECR_REPO_NAME to: $ECR_REPO_NAME"
+            echo "✅ ECR repo name extracted: $ECR_REPO_NAME"
+          else
+            echo "❌ WARNING: ECR repo name not found!"
           fi
 
-      - name: 🔧 Login to Amazon ECR
+      # Login to Amazon ECR
+      - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: 🐳 Build, tag and push Docker image
+      # Build and Push Docker Image
+      - name: Build and Push Docker Image
         if: env.ECR_REPO_NAME != ''
         run: |
           IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO_NAME }}:latest
           docker build -t $IMAGE_URI ./app
           docker push $IMAGE_URI
+          echo "✅ Docker image pushed to $IMAGE_URI"
 
-      - name: 🧪 Run Unit Tests
+      # Run Unit Tests
+      - name: Run Unit Tests
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pytest tests/
 
-      - name: Terraform Plan (Main)
+      # Terraform Plan & Apply (Main)
+      - name: Terraform Plan & Apply (Main)
         working-directory: terraform/main
-        run: terraform plan
-
-      - name: Terraform Apply (Main)
-        working-directory: terraform/main
-        run: terraform apply -auto-approve
+        run: |
+          terraform plan
+          terraform apply -auto-approve
