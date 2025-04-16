@@ -58,8 +58,10 @@ jobs:
         id: tf_outputs
         working-directory: terraform/backend
         run: |
-          echo "TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)" >> $GITHUB_ENV
-          echo "DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)" >> $GITHUB_ENV
+          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)
+          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)
+          echo "TF_BUCKET_NAME=${TF_BUCKET_NAME}" >> $GITHUB_ENV
+          echo "DYNAMO_TABLE_NAME=${DYNAMO_TABLE_NAME}" >> $GITHUB_ENV
 
           if [ -n "$BUCKET_NAME" ]; then
             echo "TF_BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
