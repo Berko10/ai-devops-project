@@ -111,14 +111,6 @@ jobs:
             -backend-config="region=$AWS_REGION" \
             -backend-config="dynamodb_table=$DYNAMO_TABLE_NAME"
 
-      - name: Debug ALB Module Outputs (List Resources)
-        working-directory: terraform/main
-        run: terraform state list
-
-      - name: Debug ALB Module Outputs (Details)
-        working-directory: terraform/main
-        run: terraform state show module.alb.load_balancer
-
       - name: Terraform Plan (Main)
         working-directory: terraform/main
         run: terraform plan
