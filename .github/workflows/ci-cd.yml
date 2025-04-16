@@ -25,7 +25,6 @@ jobs:
             echo "✅ Using region from secrets: ${{ secrets.AWS_REGION }}"
           fi
 
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -33,13 +32,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v1
         with:
-         terraform_version: '1.6.6'
+          terraform_version: '1.6.6'
 
-      #  Destroy backend if exists
       - name: Terraform Destroy (Backend)
         working-directory: terraform/backend
         continue-on-error: true
@@ -52,48 +49,32 @@ jobs:
         run: |
           terraform init
           terraform refresh
-          # Try to create resources
           terraform plan -out=tfplan || echo "❌ Plan failed, skipping problematic resources"
-
-          # Apply the plan but handle DynamoDB creation failure
           terraform apply -auto-approve || echo "✅ Skipping problematic resources if already exist"
 
-      - name: 🔧 Terraform Output (for secrets)
+      - name: 🔧 Terraform Output (for environment)
         id: tf_outputs
         working-directory: terraform/backend
         run: |
           TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name | tr -d '\r\n')
           DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name | tr -d '\r\n')
 
-           # Only add values if not empty
+          echo "DEBUG - TF_BUCKET_NAME: ${TF_BUCKET_NAME}"
+          echo "DEBUG - DYNAMO_TABLE_NAME: ${DYNAMO_TABLE_NAME}"
+
           if [ -n "$TF_BUCKET_NAME" ]; then
-            echo "TF_BUCKET_NAME=${TF_BUCKET_NAME}" >> $GITHUB_ENV
+            echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
             echo "✅ Set TF_BUCKET_NAME"
           else
             echo "❌ TF_BUCKET_NAME is empty, skipping"
           fi
 
           if [ -n "$DYNAMO_TABLE_NAME" ]; then
-            echo "DYNAMO_TABLE_NAME=${DYNAMO_TABLE_NAME}" >> $GITHUB_ENV
+            echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
             echo "✅ Set DYNAMO_TABLE_NAME"
           else
             echo "❌ DYNAMO_TABLE_NAME is empty, skipping"
           fi
-
-      - name: 🔑 Set GitHub Secrets (using GitHub CLI)
-        run: |
-          # Set GitHub token as environment variable
-          echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
-          # Only set secrets if they are not empty
-          if [ -n "${{ env.TF_BUCKET_NAME }}" ]; then
-            gh secret set TF_BUCKET_NAME --body "${{ env.TF_BUCKET_NAME }}"
-          fi
-
-          if [ -n "${{ env.DYNAMO_TABLE_NAME }}" ]; then
-            gh secret set DYNAMO_TABLE_NAME --body "${{ env.DYNAMO_TABLE_NAME }}"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 🔧 Login to Amazon ECR
         id: login-ecr
