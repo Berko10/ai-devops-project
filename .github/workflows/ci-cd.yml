@@ -64,19 +64,20 @@ jobs:
         run: |
           TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)
           DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)
-                    
-          echo "TF_BUCKET_NAME=${TF_BUCKET_NAME}" >> $GITHUB_ENV
-          echo "DYNAMO_TABLE_NAME=${DYNAMO_TABLE_NAME}" >> $GITHUB_ENV
+          
+          echo "DEBUG - TF_BUCKET_NAME: ${TF_BUCKET_NAME}"
+          echo "DEBUG - DYNAMO_TABLE_NAME: ${DYNAMO_TABLE_NAME}"
 
-          if [ -n "$BUCKET_NAME" ]; then
-            echo "TF_BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
+           # Only add values if not empty
+          if [ -n "$TF_BUCKET_NAME" ]; then
+            echo "TF_BUCKET_NAME=${TF_BUCKET_NAME}" >> $GITHUB_ENV
             echo "✅ Set TF_BUCKET_NAME"
           else
             echo "❌ TF_BUCKET_NAME is empty, skipping"
           fi
 
           if [ -n "$DYNAMO_TABLE_NAME" ]; then
-            echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
+            echo "DYNAMO_TABLE_NAME=${DYNAMO_TABLE_NAME}" >> $GITHUB_ENV
             echo "✅ Set DYNAMO_TABLE_NAME"
           else
             echo "❌ DYNAMO_TABLE_NAME is empty, skipping"
