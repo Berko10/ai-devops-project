@@ -46,27 +46,23 @@ jobs:
           terraform apply -auto-approve || echo "✅ Skipping problematic resources if already exist"
 
       - name: 🧾 Extract Backend Outputs
-        id: extract-backend-outputs
         working-directory: terraform/backend
         run: |
           echo "🔍 Extracting outputs..."
           
-          # Capture clean outputs without debug information
-          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name | grep -v "::debug::" | tr -d '\r\n')
-          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name | grep -v "::debug::" | tr -d '\r\n')
+          # Store these outputs directly, not as commands to be executed
+          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)
+          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)
           
+          # Validate the outputs
           if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
             echo "❌ ERROR: One or more outputs are empty!"
             exit 1
           fi
           
-          # Use the GitHub Environment Files format
-          echo "TF_BUCKET_NAME=${TF_BUCKET_NAME}" >> "$GITHUB_ENV"
-          echo "DYNAMO_TABLE_NAME=${DYNAMO_TABLE_NAME}" >> "$GITHUB_ENV"
-          
-          # Also set step outputs
-          echo "tf_bucket_name=${TF_BUCKET_NAME}" >> "$GITHUB_OUTPUT"
-          echo "dynamo_table_name=${DYNAMO_TABLE_NAME}" >> "$GITHUB_OUTPUT"
+          # Save to environment variables for later steps
+          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
+          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
           
           echo "✅ Saved outputs:"
           echo "  • TF_BUCKET_NAME=$TF_BUCKET_NAME"
@@ -75,32 +71,40 @@ jobs:
       - name: Terraform Init (Main)
         working-directory: terraform/main
         run: |
+          # Print debug info
+          echo "Using bucket: $TF_BUCKET_NAME"
+          echo "Using dynamodb table: $DYNAMO_TABLE_NAME"
+          echo "Using region: $AWS_REGION"
+          
+          # Initialize Terraform with backend config
           terraform init -reconfigure \
-            -backend-config="bucket=${{ env.TF_BUCKET_NAME }}" \
+            -backend-config="bucket=$TF_BUCKET_NAME" \
             -backend-config="key=main/terraform.tfstate" \
-            -backend-config="region=${{ env.AWS_REGION }}" \
-            -backend-config="dynamodb_table=${{ env.DYNAMO_TABLE_NAME }}"
+            -backend-config="region=$AWS_REGION" \
+            -backend-config="dynamodb_table=$DYNAMO_TABLE_NAME"
 
       - name: 🔄 Get ECR repo name from Terraform output
-        id: get-ecr-repo
         working-directory: terraform/main
         run: |
-          # Clean output to avoid debug messages
-          ECR_REPO_NAME=$(terraform output -raw ecr_repo_name | grep -v "::debug::" | tr -d '\r\n')
+          # Store the ECR repo name
+          ECR_REPO_NAME=$(terraform output -raw ecr_repo_name || echo "")
           
-          # Set environment variable
-          echo "ECR_REPO_NAME=${ECR_REPO_NAME}" >> "$GITHUB_ENV"
-          
-          # Set step output
-          echo "ecr_repo_name=${ECR_REPO_NAME}" >> "$GITHUB_OUTPUT"
-          
-          echo "✅ Set ECR_REPO_NAME to: $ECR_REPO_NAME"
+          # Validate the output
+          if [ -z "$ECR_REPO_NAME" ]; then
+            echo "❌ WARNING: ECR repo name output is empty!"
+            # Don't exit with error since we might not have created it yet
+          else
+            # Save for later steps
+            echo "ECR_REPO_NAME=$ECR_REPO_NAME" >> $GITHUB_ENV
+            echo "✅ Set ECR_REPO_NAME to: $ECR_REPO_NAME"
+          fi
 
       - name: 🔧 Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: 🐳 Build, tag and push Docker image
+        if: env.ECR_REPO_NAME != ''
         run: |
           IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO_NAME }}:latest
           docker build -t $IMAGE_URI ./app
