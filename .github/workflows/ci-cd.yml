@@ -110,6 +110,14 @@ jobs:
             -backend-config="region=$AWS_REGION" \
             -backend-config="dynamodb_table=$DYNAMO_TABLE_NAME"
 
+      - name: Terraform Plan (Main)
+        working-directory: terraform/main
+        run: terraform plan
+
+      - name: Terraform Apply (Main)
+        working-directory: terraform/main
+        run: terraform apply -auto-approve
+
         # Extract and Use ECR Outputs
       - name: Extract ECR Outputs
         working-directory: terraform/main
@@ -143,11 +151,3 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pytest tests/
-
-      - name: Terraform Plan (Main)
-        working-directory: terraform/main
-        run: terraform plan
-
-      - name: Terraform Apply (Main)
-        working-directory: terraform/main
-        run: terraform apply -auto-approve
