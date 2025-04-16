@@ -56,7 +56,6 @@ jobs:
         working-directory: terraform/backend
         run: |
           echo "🔍 Extracting Terraform outputs..."
-        # ניקוי הערכים שהתקבלו מ-Terraform
           TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name | sed 's/^.*output -raw //;s/::debug.*//;s/^ *//;s/ *$//')
           DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name | sed 's/^.*output -raw //;s/::debug.*//;s/^ *//;s/ *$//')
 
