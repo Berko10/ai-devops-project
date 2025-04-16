@@ -1,13 +1,3 @@
-terraform {
-  backend "s3" {
-    bucket         = var.tf_bucket_name
-    key            = var.tfstate_path
-    region         = var.aws_region
-    dynamodb_table = var.dynamo_table_name
-    encrypt        = true
-  }
-}
-
 provider "aws" {
   region = var.aws_region
 }
