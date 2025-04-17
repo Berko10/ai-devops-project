@@ -36,8 +36,13 @@ jobs:
           terraform_version: '1.6.6'
 
       # ------------------------
-      # 🔹 INITIAL INFRA
+      # 🔹 INIT INFRA
       # ------------------------
+      - name: Terraform Init
+        working-directory: terraform/main
+        run: |
+          terraform init
+      
       - name: Destroy Conflicting Resources
         working-directory: terraform/main
         run: terraform destroy -auto-approve || true
@@ -49,7 +54,7 @@ jobs:
       # ------------------------
       # 🔹 BACKEND APPLY
       # ------------------------
-      - name: Terraform Init & Apply (Backend)
+      - name: Terraform Apply (Backend)
         working-directory: terraform/backend
         run: |
           terraform init
@@ -119,10 +124,14 @@ jobs:
       # ------------------------
       # 🔹 APPLY ECR בלבד
       # ------------------------
-      - name: Terraform Apply (ECR Only)
+      - name: Terraform Apply (ECR Only if not exists)
         working-directory: terraform/main
         run: |
-          terraform apply -target=aws_ecr_repository.app_repo -auto-approve
+          if aws ecr describe-repositories --repository-names devops-app >/dev/null 2>&1; then
+            echo "ECR repository already exists. Skipping terraform apply."
+          else
+            terraform apply -target=aws_ecr_repository.app_repo -auto-approve
+          fi
 
       - name: Extract ECR Repo Name
         working-directory: terraform/main
