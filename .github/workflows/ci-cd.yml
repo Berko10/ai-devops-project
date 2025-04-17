@@ -78,6 +78,9 @@ jobs:
             exit 1
           fi
 
+          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
+          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
+
       # ------------------------
       # 🔹 INIT MAIN BACKEND
       # ------------------------
