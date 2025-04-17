@@ -59,65 +59,6 @@ resource "aws_ecr_repository" "app_repo" {
   name = "devops-app"
 }
 
-# Load Balancer
-module "alb" {
-  source  = "terraform-aws-modules/alb/aws"
-  version = "8.0.0"
-
-  name               = "devops-alb"
-  load_balancer_type = "application"
-
-  vpc_id  = module.vpc.vpc_id
-  subnets = module.vpc.public_subnets
-
-  security_groups = [aws_security_group.alb_sg.id]
-
-  target_groups = [
-    {
-      name_prefix      = var.alb_target_group_key
-      backend_protocol = "HTTP"
-      backend_port     = 5000
-      target_type      = "ip"
-      health_check = {
-        path = "/"
-      }
-    }
-  ]
-
-  listeners = [
-    {
-      port     = 80
-      protocol = "HTTP"
-      default_action = {
-        type             = "forward"
-        target_group_index = 0
-      }
-    }
-  ]
-}
-
-
-# Security Group for ALB
-resource "aws_security_group" "alb_sg" {
-  name        = "alb-sg"
-  description = "Allow HTTP"
-  vpc_id      = module.vpc.vpc_id
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
 # ECS Task Definition
 resource "aws_ecs_task_definition" "app" {
   family                   = "devops-app"
@@ -161,12 +102,12 @@ resource "aws_ecs_service" "app" {
   }
 
   load_balancer {
-    target_group_arn = module.alb.target_group_arns[0] # נשאיר את זה ככה כי בגרסה הזו זה עובד עם רשימה
+    target_group_arn = aws_lb_target_group.devops_target_group.arn
     container_name   = "devops-app"
     container_port   = 5000
   }
 
-  depends_on = [module.alb]
+  depends_on = [aws_lb.devops_alb]
 }
 
 # Auto Scaling for ECS Service
