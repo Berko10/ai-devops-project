@@ -113,11 +113,23 @@ jobs:
 
       - name: Terraform Plan (Main)
         working-directory: terraform/main
-        run: terraform plan
+        run: |
+            terraform plan -out=tfplan || ( \
+            if echo "$?" | grep -q "already exists"; then \
+              echo "⚠️ Resource already exists, skipping creation..."; \
+            else \
+              exit 1; \
+            fi )
 
       - name: Terraform Apply (Main)
         working-directory: terraform/main
-        run: terraform apply -auto-approve
+        run: |
+          terraform apply -auto-approve -input=false || ( \
+            if echo "$?" | grep -q "already exists"; then \
+              echo "⚠️ Resource already exists, skipping creation..."; \
+            else \
+              exit 1; \
+            fi )
 
         # Extract and Use ECR Outputs
       - name: Extract ECR Outputs
