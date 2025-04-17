@@ -40,7 +40,7 @@ jobs:
       # ------------------------
       - name: Terraform Init & Apply (Backend)
         working-directory: terraform/backend
-         run: |
+        run: |
           terraform init
           terraform plan -out=tfplan
           terraform apply -auto-approve -input=false || {
