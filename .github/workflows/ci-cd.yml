@@ -140,9 +140,8 @@ jobs:
       - name: Extract ECR Outputs
         working-directory: terraform/main
         run: |
-          echo "--- Terraform Output (ecr_repo_name) ---"
-          terraform output -raw ecr_repo_name 2>/dev/null
-          echo "--- End Terraform Output ---"
+          ECR_REPO_NAME_RAW=$(terraform output -raw tf_state_bucket_name)
+          ECR_REPO_NAME=$(echo "$ECR_REPO_NAME_RAW" | sed 's/\[command\].*output -raw ecr_repo_name//' | sed 's/::.*//' | tr -d '\r\n')
           ECR_REPO_NAME=$(terraform output -raw ecr_repo_name 2>/dev/null | tr -d '\r\n')
           echo ECR_REPO_NAME=$ECR_REPO_NAME
           if [ -n "$ECR_REPO_NAME" ]; then
