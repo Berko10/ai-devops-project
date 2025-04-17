@@ -26,12 +26,14 @@ module "ecs" {
   version = "5.12.0"
 
   cluster_name = "devops-cluster"
+  vpc_id       = module.vpc.vpc_id
+  subnets      = module.vpc.public_subnets
 
   tags = {
     Project = "DevOpsProject"
   }
 
-  depends_on = [module.vpc] # הוספת תלות (אופציונלי)
+  depends_on = [module.vpc]
 }
 
 # IAM Role for ECS task execution
@@ -51,11 +53,11 @@ resource "aws_iam_role" "ecs_task_exec_role" {
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
-  role     = aws_iam_role.ecs_task_exec_role.name
+  role       = aws_iam_role.ecs_task_exec_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Docker Image from ECR (we'll push it later)
+# Docker Image from ECR
 resource "aws_ecr_repository" "app_repo" {
   name = "devops-app"
 }
@@ -99,16 +101,16 @@ resource "aws_ecs_service" "app" {
   network_configuration {
     subnets         = module.vpc.public_subnets
     assign_public_ip = true
-    security_groups = [aws_security_group.alb_sg.id] # מוגדר ב-alb.tf
+    security_groups = [aws_security_group.alb_sg.id]
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.devops_target_group.arn # מוגדר ב-alb.tf
+    target_group_arn = aws_lb_target_group.devops_target_group.arn
     container_name   = "devops-app"
     container_port   = 5000
   }
 
-  depends_on = [aws_lb.devops_alb] # מוגדר ב-alb.tf
+  depends_on = [aws_lb.devops_alb]
 }
 
 # Auto Scaling for ECS Service
@@ -134,43 +136,4 @@ resource "aws_appautoscaling_policy" "ecs_scaling_policy" {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
   }
-}
-
-# IAM Role for ALB Listener Permissions
-resource "aws_iam_role" "alb_listener_role" {
-  name = "albListenerRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
-      },
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-# IAM Policy to allow ALB Listener and CloudWatch Log actions
-resource "aws_iam_role_policy" "alb_listener_policy" {
-  name = "albListenerPolicy"
-  role = aws_iam_role.alb_listener_role.id
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = [
-          "elasticloadbalancing:ModifyListenerAttributes",    # מאפשר שינוי של פרמטרים ב-ALB
-          "logs:PutRetentionPolicy",                      # מאפשר קביעת Retention Policy ל-CloudWatch Logs
-          "logs:CreateLogStream",                         # מאפשר יצירת Streams ל-CloudWatch Logs
-          "logs:PutLogEvents",                            # מאפשר כתיבה לאירועים ב-CloudWatch Logs
-          "logs:DescribeLogStreams",                      # מאפשר תיאור של Streams ב-CloudWatch Logs
-          "iam:PutRolePolicy"                             # מאפשר הוספת פוליסי ל-Role
-        ],
-        Resource = "*"
-      }
-    ]
-  })
 }
