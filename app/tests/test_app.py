@@ -1,5 +1,5 @@
 import pytest
-from app.app import app  # מייבא את האפליקציה
+from app import app  # מייבא את האפליקציה
 
 @pytest.fixture
 def client():
