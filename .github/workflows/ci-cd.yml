@@ -59,12 +59,6 @@ jobs:
             fi
           }
 
-      - name: Test Terraform Output Fix
-        working-directory: terraform/backend
-        run: |
-          BUCKET=$(terraform output -raw tf_state_bucket_name)
-          echo "✅ BUCKET=$BUCKET"
-
       - name: Extract Backend Outputs
         working-directory: terraform/backend
         shell: bash
@@ -135,6 +129,8 @@ jobs:
               echo "❌ Unhandled error in main apply. Exiting."
               exit $ERR
             fi
+            terraform output alb_dns
+            terraform output ecr_repo_name
           }
 
       - name: Extract ECR Outputs
