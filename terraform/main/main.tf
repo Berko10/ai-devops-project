@@ -134,3 +134,40 @@ resource "aws_appautoscaling_policy" "ecs_scaling_policy" {
     }
   }
 }
+
+# IAM Role for ALB Listener Permissions
+resource "aws_iam_role" "alb_listener_role" {
+  name = "albListenerRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Service = "ecs-tasks.amazonaws.com"
+      },
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+# IAM Policy to allow ALB Listener and CloudWatch Log actions
+resource "aws_iam_role_policy" "alb_listener_policy" {
+  name = "albListenerPolicy"
+
+  role = aws_iam_role.alb_listener_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect   = "Allow",
+        Action   = [
+          "elasticloadbalancing:ModifyListenerAttributes",
+          "logs:PutRetentionPolicy"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
