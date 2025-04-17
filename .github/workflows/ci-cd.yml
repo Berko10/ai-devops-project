@@ -139,7 +139,21 @@ jobs:
       # ------------------------
       - name: Terraform Apply (All Infra)
         working-directory: terraform/main
-        run: terraform apply -auto-approve
+        run: |
+          terraform init
+          terraform plan 
+          terraform apply -auto-approve -input=false || {
+            ERR=$?
+            echo "Terraform apply failed with exit code $ERR"
+            LOG=$(terraform apply -auto-approve -input=false 2>&1 || true)
+            if echo "$LOG" | grep -q "already exists"; then
+              echo "⚠️ Resource already exists. Continuing..."
+            else
+              echo "$LOG"
+              echo "❌ Unhandled error in backend apply. Exiting."
+              exit $ERR
+            fi
+          }
 
       # ------------------------
       # 🔹 בדיקות יוניט
