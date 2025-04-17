@@ -71,13 +71,15 @@ jobs:
         run: |
           echo "🔍 Extracting Terraform outputs..."
 
-          TF_BUCKET_NAME_RAW=$(terraform output -raw tf_state_bucket_name)
-          TF_BUCKET_NAME=$(echo "$TF_BUCKET_NAME_RAW" | sed 's/\[command\].*stdout: //')
-          TF_BUCKET_NAME=$(echo "$TF_BUCKET_NAME" | sed 's/::.*//')
+          # חילוץ TF_BUCKET_NAME
+          TF_BUCKET_NAME_LINE1=$(terraform output -raw tf_state_bucket_name)
+          TF_BUCKET_NAME_LINE2=$(terraform output -raw tf_state_bucket_name | tail -n 1)
+          TF_BUCKET_NAME="$TF_BUCKET_NAME_LINE2"
 
-          DYNAMO_TABLE_NAME_RAW=$(terraform output -raw dynamo_table_name)
-          DYNAMO_TABLE_NAME=$(echo "$DYNAMO_TABLE_NAME_RAW" | sed 's/\[command\].*stdout: //')
-          DYNAMO_TABLE_NAME=$(echo "$DYNAMO_TABLE_NAME" | sed 's/::.*//')
+          # חילוץ DYNAMO_TABLE_NAME
+          DYNAMO_TABLE_NAME_LINE1=$(terraform output -raw dynamo_table_name)
+          DYNAMO_TABLE_NAME_LINE2=$(terraform output -raw dynamo_table_name | tail -n 1)
+          DYNAMO_TABLE_NAME="$DYNAMO_TABLE_NAME_LINE2"
 
           echo "✅ Outputs extracted:"
           echo "TF_BUCKET_NAME=$TF_BUCKET_NAME"
