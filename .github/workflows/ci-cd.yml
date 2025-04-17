@@ -36,25 +36,9 @@ jobs:
           terraform_version: '1.6.6'
 
       # ------------------------
-      # 🔹 INIT INFRA
-      # ------------------------
-      - name: Terraform Init
-        working-directory: terraform/main
-        run: |
-          terraform init
-      
-      - name: Destroy Conflicting Resources
-        working-directory: terraform/main
-        run: terraform destroy -auto-approve || true
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: "us-east-1"
-
-      # ------------------------
       # 🔹 BACKEND APPLY
       # ------------------------
-      - name: Terraform Apply (Backend)
+      - name: Terraform Init&Apply (Backend)
         working-directory: terraform/backend
         run: |
           terraform init
@@ -115,12 +99,7 @@ jobs:
       - name: Terraform Destroy Existing Infra
         working-directory: terraform/main
         run: |
-          terraform plan -destroy -out=tfdestroy.plan
-          if grep -q 'No changes. Your infrastructure matches the configuration.' tfdestroy.plan; then
-            echo "No resources to destroy."
-          else
             terraform destroy -auto-approve
-          fi
       # ------------------------
       # 🔹 APPLY ECR בלבד
       # ------------------------
