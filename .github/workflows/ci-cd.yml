@@ -15,15 +15,12 @@ jobs:
 
       - name: Set AWS Region Defaults
         run: |
-          echo "Checking AWS region..."
           if [ -z "${{ secrets.AWS_REGION }}" ]; then
-            echo "AWS_DEFAULT_REGION=us-east-1" >> $GITHUB_ENV
             echo "AWS_REGION=us-east-1" >> $GITHUB_ENV
-            echo "✅ No region provided — using default: us-east-1"
+            echo "AWS_DEFAULT_REGION=us-east-1" >> $GITHUB_ENV
           else
             echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> $GITHUB_ENV
             echo "AWS_DEFAULT_REGION=${{ secrets.AWS_REGION }}" >> $GITHUB_ENV
-            echo "✅ Using region from secrets: ${{ secrets.AWS_REGION }}"
           fi
 
       - name: Configure AWS Credentials
@@ -33,135 +30,89 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Remove .terraform directory
-        run: rm -rf terraform/.terraform
-
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: '1.6.6'
 
-      - name: Terraform Init & Backend Setup
+      # ------------------------
+      # 🔹 BACKEND APPLY
+      # ------------------------
+      - name: Terraform Init & Apply (Backend)
         working-directory: terraform/backend
         run: |
           terraform init
-          terraform plan -out=tfplan
-          terraform apply -auto-approve -input=false || {
-            ERR=$?
-            echo "Terraform apply failed with exit code $ERR"
-            LOG=$(terraform apply -auto-approve -input=false 2>&1 || true)
-            if echo "$LOG" | grep -q "already exists"; then
-              echo "⚠️ Resource already exists. Continuing..."
-            else
-              echo "$LOG"
-              echo "❌ Unhandled error in backend apply. Exiting."
-              exit $ERR
-            fi
-          }
+          terraform apply -auto-approve
 
       - name: Extract Backend Outputs
         working-directory: terraform/backend
-        shell: bash
         run: |
-          echo "🔍 Extracting Terraform outputs..."
+          echo "TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)" >> $GITHUB_ENV
+          echo "DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)" >> $GITHUB_ENV
 
-          # חילוץ TF_BUCKET_NAME
-          TF_BUCKET_NAME_RAW=$(terraform output -raw tf_state_bucket_name)
-          TF_BUCKET_NAME=$(echo "$TF_BUCKET_NAME_RAW" | sed 's/\[command\].*output -raw tf_state_bucket_name//' | sed 's/::.*//' | tr -d '\r\n')
-
-          # חילוץ DYNAMO_TABLE_NAME
-          DYNAMO_TABLE_NAME_RAW=$(terraform output -raw dynamo_table_name)
-          DYNAMO_TABLE_NAME=$(echo "$DYNAMO_TABLE_NAME_RAW" | sed 's/\[command\].*output -raw dynamo_table_name//' | sed 's/::.*//' | tr -d '\r\n')
-
-          echo "✅ Outputs extracted:"
-          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME"
-          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME"
-
-          if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
-            echo "❌ ERROR - One or more outputs are empty!"
-            exit 1
-          fi
-
-          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
-          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
-
-          echo "📄 GITHUB_ENV content:"
-          cat $GITHUB_ENV
-
+      # ------------------------
+      # 🔹 INIT MAIN BACKEND
+      # ------------------------
       - name: Terraform Init (Main)
         working-directory: terraform/main
         run: |
-          echo "Using bucket: $TF_BUCKET_NAME"
-          echo "Using dynamodb table: $DYNAMO_TABLE_NAME"
-          echo "Using region: $AWS_REGION"
-
           terraform init -reconfigure \
-            -backend-config="bucket=$TF_BUCKET_NAME" \
+            -backend-config="bucket=${{ env.TF_BUCKET_NAME }}" \
             -backend-config="key=main/terraform.tfstate" \
-            -backend-config="region=$AWS_REGION" \
-            -backend-config="dynamodb_table=$DYNAMO_TABLE_NAME"
-
-      - name: Terraform Plan (Main)
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ env.DYNAMO_TABLE_NAME }}"
+      
+      # ------------------------
+      # 🔥 DESTROY משאבים קיימים
+      # ------------------------
+      - name: Terraform Destroy Existing Infra
         working-directory: terraform/main
         run: |
-          terraform plan -out=tfplan || {
-            ERR=$?
-            LOG=$(terraform plan -out=tfplan 2>&1 || true)
-            if echo "$LOG" | grep -q "already exists"; then
-              echo "⚠️ Resource already exists during plan. Continuing..."
-            else
-              echo "$LOG"
-              echo "❌ Unhandled error in main plan. Exiting."
-              exit $ERR
-            fi
-          }
-
-      - name: Terraform Apply (Main)
-        working-directory: terraform/main
-        run: |
-          terraform apply -auto-approve -input=false || {
-            ERR=$?
-            LOG=$(terraform apply -auto-approve -input=false 2>&1 || true)
-            if echo "$LOG" | grep -q "already exists"; then
-              echo "⚠️ Resource already exists during apply. Continuing..."
-            else
-              echo "$LOG"
-              echo "❌ Unhandled error in main apply. Exiting."
-              exit $ERR
-            fi
-            ALB_URL_RAW=$(terraform output -raw alb_dns)
-            ALB_URL=$(echo "$ALB_URL_RAW" | sed 's/\[command\].*output -raw alb_dns//' | sed 's/::.*//' | tr -d '\r\n')
-            echo ALB_URL=4ALB_URL
-          }
-
-      - name: Extract ECR Outputs
-        working-directory: terraform/main
-        run: |
-          ECR_REPO_NAME_RAW=$(terraform output -raw ecr_repo_name)
-          ECR_REPO_NAME=$(echo "$ECR_REPO_NAME_RAW" | sed 's/\[command\].*output -raw ecr_repo_name//' | sed 's/::.*//' | tr -d '\r\n')
-          echo ECR_REPO_NAME=$ECR_REPO_NAME
-          if [ -n "$ECR_REPO_NAME" ]; then
-            echo "ECR_REPO_NAME=$ECR_REPO_NAME" >> $GITHUB_ENV
+          terraform plan -destroy -out=tfdestroy.plan
+          if grep -q 'No changes. Your infrastructure matches the configuration.' tfdestroy.plan; then
+            echo "No resources to destroy."
           else
-            echo "❌ ECR_REPO_NAME is empty!" && exit 1
+            terraform destroy -auto-approve
           fi
+      # ------------------------
+      # 🔹 APPLY ECR בלבד
+      # ------------------------
+      - name: Terraform Apply (ECR Only)
+        working-directory: terraform/main
+        run: |
+          terraform apply -target=aws_ecr_repository.app_repo -auto-approve
 
-      - name: 🔧 Login to Amazon ECR
+      - name: Extract ECR Repo Name
+        working-directory: terraform/main
+        run: |
+          echo "ECR_REPO_NAME=$(terraform output -raw ecr_repo_name)" >> $GITHUB_ENV
+
+      # ------------------------
+      # 🔹 DOCKER BUILD + PUSH
+      # ------------------------
+      - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: 🐳 Build, tag and push Docker image
-        if: env.ECR_REPO_NAME != ''
+      - name: Build and Push Docker Image
         run: |
           IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO_NAME }}:latest
-          echo "בניית תמונת Docker: $IMAGE_URI"
           docker build -t $IMAGE_URI ./app
-          echo "דחיפת תמונת Docker: $IMAGE_URI"
           docker push $IMAGE_URI
 
-      - name: 🧪 Run Unit Tests
-        working-directory: ./
+      # ------------------------
+      # 🔹 APPLY כל שאר התשתית (ECS וכו')
+      # ------------------------
+      - name: Terraform Apply (All Infra)
+        working-directory: terraform/main
+        run: terraform apply -auto-approve
+
+      # ------------------------
+      # 🔹 בדיקות יוניט
+      # ------------------------
+      - name: Run Unit Tests
+        working-directory: ./app
         run: |
           python -m pip install --upgrade pip
-          pip install -r app/requirements.txt
-          PYTHONPATH=./app pytest app/tests
+          pip install -r requirements.txt
+          PYTHONPATH=. pytest tests
