@@ -25,10 +25,7 @@ module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = "5.12.0"
 
-  name          = "devops-cluster" # שינוי שם מ-cluster_name ל-name
   cluster_name  = "devops-cluster"
-  
-  create_cluster = true # עכשיו צריך להגדיר יצירת ECS Cluster במפורש
 
   tags = {
     Project = "DevOpsProject"
