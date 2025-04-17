@@ -10,7 +10,7 @@ module "vpc" {
   name = "devops-vpc"
   cidr = "10.0.0.0/16"
 
-  azs         = ["${var.aws_region}a", "${var.aws_region}b"]
+  azs       = ["${var.aws_region}a", "${var.aws_region}b"]
   public_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
 
   enable_dns_hostnames = true
@@ -25,11 +25,13 @@ module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = "5.12.0"
 
-  cluster_name  = "devops-cluster"
+  cluster_name = "devops-cluster"
 
   tags = {
     Project = "DevOpsProject"
   }
+
+  depends_on = [module.vpc] # הוספת תלות (אופציונלי)
 }
 
 # IAM Role for ECS task execution
@@ -49,7 +51,7 @@ resource "aws_iam_role" "ecs_task_exec_role" {
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
-  role       = aws_iam_role.ecs_task_exec_role.name
+  role     = aws_iam_role.ecs_task_exec_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
@@ -60,17 +62,17 @@ resource "aws_ecr_repository" "app_repo" {
 
 # ECS Task Definition
 resource "aws_ecs_task_definition" "app" {
-  family               = "devops-app"
+  family                   = "devops-app"
   requires_compatibilities = ["FARGATE"]
-  network_mode         = "awsvpc"
-  cpu                  = "256"
-  memory               = "512"
-  execution_role_arn   = aws_iam_role.ecs_task_exec_role.arn
+  network_mode             = "awsvpc"
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = aws_iam_role.ecs_task_exec_role.arn
 
   container_definitions = jsonencode([{
-    name      = "devops-app"
-    image     = "${aws_ecr_repository.app_repo.repository_url}:latest"
-    essential = true
+    name        = "devops-app"
+    image       = "${aws_ecr_repository.app_repo.repository_url}:latest"
+    essential   = true
     portMappings = [{
       containerPort = 5000
       hostPort      = 5000
@@ -119,8 +121,8 @@ resource "aws_appautoscaling_target" "ecs_target" {
 }
 
 resource "aws_appautoscaling_policy" "ecs_scaling_policy" {
-  name                 = "ecs-scale-policy"
-  policy_type          = "TargetTrackingScaling"
+  name               = "ecs-scale-policy"
+  policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.ecs_target.resource_id
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
@@ -160,16 +162,15 @@ resource "aws_iam_role_policy" "alb_listener_policy" {
       {
         Effect = "Allow",
         Action = [
-          "elasticloadbalancing:ModifyListenerAttributes",   # מאפשר שינוי של פרמטרים ב-ALB
-          "logs:PutRetentionPolicy",                          # מאפשר קביעת Retention Policy ל-CloudWatch Logs
-          "logs:CreateLogStream",                             # מאפשר יצירת Streams ל-CloudWatch Logs
-          "logs:PutLogEvents",                                # מאפשר כתיבה לאירועים ב-CloudWatch Logs
-          "logs:DescribeLogStreams",                          # מאפשר תיאור של Streams ב-CloudWatch Logs
-          "iam:PutRolePolicy"                                 # מאפשר הוספת פוליסי ל-Role
+          "elasticloadbalancing:ModifyListenerAttributes",    # מאפשר שינוי של פרמטרים ב-ALB
+          "logs:PutRetentionPolicy",                      # מאפשר קביעת Retention Policy ל-CloudWatch Logs
+          "logs:CreateLogStream",                         # מאפשר יצירת Streams ל-CloudWatch Logs
+          "logs:PutLogEvents",                            # מאפשר כתיבה לאירועים ב-CloudWatch Logs
+          "logs:DescribeLogStreams",                      # מאפשר תיאור של Streams ב-CloudWatch Logs
+          "iam:PutRolePolicy"                             # מאפשר הוספת פוליסי ל-Role
         ],
         Resource = "*"
       }
     ]
   })
 }
-
