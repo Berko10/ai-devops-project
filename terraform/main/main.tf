@@ -21,15 +21,9 @@ module "vpc" {
   }
 }
 
-module "ecs" {
-  source  = "terraform-aws-modules/ecs/aws"
-  version = "5.12.0"
-
-  cluster_name = "devops-cluster"  # לא משנה את השם, השתמש ב-cluster_name ולא ב-name
-
-  tags = {
-    Project = "DevOpsProject"
-  }
+# יצירת ECS Cluster
+resource "aws_ecs_cluster" "devops_cluster" {
+  name = "devops-cluster"
 }
 
 # IAM Role for ECS task execution
@@ -38,7 +32,7 @@ resource "aws_iam_role" "ecs_task_exec_role" {
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
-    Statement = [{
+    Statement = [ {
       Effect = "Allow",
       Principal = {
         Service = "ecs-tasks.amazonaws.com"
@@ -53,7 +47,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Docker Image from ECR
+# יצירת ריפוזיטורי ב-ECR
 resource "aws_ecr_repository" "app_repo" {
   name = "devops-app"
 }
@@ -89,7 +83,7 @@ resource "aws_ecs_task_definition" "app" {
 # ECS Service
 resource "aws_ecs_service" "app" {
   name            = "devops-service"
-  cluster         = module.ecs.cluster_id
+  cluster         = aws_ecs_cluster.devops_cluster.id
   launch_type     = "FARGATE"
   desired_count   = 1
   task_definition = aws_ecs_task_definition.app.arn
@@ -113,7 +107,7 @@ resource "aws_ecs_service" "app" {
 resource "aws_appautoscaling_target" "ecs_target" {
   max_capacity       = 4
   min_capacity       = 1
-  resource_id        = "service/${module.ecs.cluster_id}/devops-service"
+  resource_id        = "service/${aws_ecs_cluster.devops_cluster.id}/devops-service"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }
