@@ -1,5 +1,5 @@
 import pytest
-from . import app  # כאן נניח ש-Flask הוגדר בקובץ app.py שלך
+from .. import app  # כאן נניח ש-Flask הוגדר בקובץ app.py שלך
 
 @pytest.fixture
 def client():
