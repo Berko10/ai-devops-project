@@ -161,11 +161,16 @@ resource "aws_iam_role_policy" "alb_listener_policy" {
       {
         Effect = "Allow",
         Action = [
-          "elasticloadbalancing:ModifyListenerAttributes",
-          "logs:PutRetentionPolicy"
+          "elasticloadbalancing:ModifyListenerAttributes",   # מאפשר שינוי של פרמטרים ב-ALB
+          "logs:PutRetentionPolicy",                          # מאפשר קביעת Retention Policy ל-CloudWatch Logs
+          "logs:CreateLogStream",                             # מאפשר יצירת Streams ל-CloudWatch Logs
+          "logs:PutLogEvents",                                # מאפשר כתיבה לאירועים ב-CloudWatch Logs
+          "logs:DescribeLogStreams",                          # מאפשר תיאור של Streams ב-CloudWatch Logs
+          "iam:PutRolePolicy"                                 # מאפשר הוספת פוליסי ל-Role
         ],
         Resource = "*"
       }
     ]
   })
 }
+
