@@ -40,15 +40,43 @@ jobs:
       # ------------------------
       - name: Terraform Init & Apply (Backend)
         working-directory: terraform/backend
-        run: |
+         run: |
           terraform init
-          terraform apply -auto-approve
+          terraform plan -out=tfplan
+          terraform apply -auto-approve -input=false || {
+            ERR=$?
+            echo "Terraform apply failed with exit code $ERR"
+            LOG=$(terraform apply -auto-approve -input=false 2>&1 || true)
+            if echo "$LOG" | grep -q "already exists"; then
+              echo "⚠️ Resource already exists. Continuing..."
+            else
+              echo "$LOG"
+              echo "❌ Unhandled error in backend apply. Exiting."
+              exit $ERR
+            fi
+          }
 
       - name: Extract Backend Outputs
         working-directory: terraform/backend
         run: |
-          echo "TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name)" >> $GITHUB_ENV
-          echo "DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name)" >> $GITHUB_ENV
+          echo "🔍 Extracting Terraform outputs..."
+
+          # חילוץ TF_BUCKET_NAME
+          TF_BUCKET_NAME_RAW=$(terraform output -raw tf_state_bucket_name)
+          TF_BUCKET_NAME=$(echo "$TF_BUCKET_NAME_RAW" | sed 's/\[command\].*output -raw tf_state_bucket_name//' | sed 's/::.*//' | tr -d '\r\n')
+
+          # חילוץ DYNAMO_TABLE_NAME
+          DYNAMO_TABLE_NAME_RAW=$(terraform output -raw dynamo_table_name)
+          DYNAMO_TABLE_NAME=$(echo "$DYNAMO_TABLE_NAME_RAW" | sed 's/\[command\].*output -raw dynamo_table_name//' | sed 's/::.*//' | tr -d '\r\n')
+
+          echo "✅ Outputs extracted:"
+          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME"
+          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME"
+
+          if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
+            echo "❌ ERROR - One or more outputs are empty!"
+            exit 1
+          fi
 
       # ------------------------
       # 🔹 INIT MAIN BACKEND
@@ -85,7 +113,14 @@ jobs:
       - name: Extract ECR Repo Name
         working-directory: terraform/main
         run: |
-          echo "ECR_REPO_NAME=$(terraform output -raw ecr_repo_name)" >> $GITHUB_ENV
+          ECR_REPO_NAME_RAW=$(terraform output -raw ecr_repo_name)
+          ECR_REPO_NAME=$(echo "$ECR_REPO_NAME_RAW" | sed 's/\[command\].*output -raw ecr_repo_name//' | sed 's/::.*//' | tr -d '\r\n')
+          echo ECR_REPO_NAME=$ECR_REPO_NAME
+          if [ -n "$ECR_REPO_NAME" ]; then
+            echo "ECR_REPO_NAME=$ECR_REPO_NAME" >> $GITHUB_ENV
+          else
+            echo "❌ ECR_REPO_NAME is empty!" && exit 1
+          fi
 
       # ------------------------
       # 🔹 DOCKER BUILD + PUSH
@@ -97,7 +132,9 @@ jobs:
       - name: Build and Push Docker Image
         run: |
           IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO_NAME }}:latest
+          echo "Build Docker Image: $IMAGE_URI"
           docker build -t $IMAGE_URI ./app
+          echo "Push Docker Image: $IMAGE_URI"
           docker push $IMAGE_URI
 
       # ------------------------
@@ -114,5 +151,5 @@ jobs:
         working-directory: ./app
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          PYTHONPATH=. pytest tests
+          pip install -r app/requirements.txt
+          PYTHONPATH=./app pytest app/tests
