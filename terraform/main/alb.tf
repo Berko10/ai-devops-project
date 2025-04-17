@@ -1,5 +1,3 @@
-# alb.tf
-
 # Security Group for ALB
 resource "aws_security_group" "alb_sg" {
   name        = "alb-sg"
@@ -26,9 +24,9 @@ resource "aws_lb" "devops_alb" {
   name               = "devops-alb"
   internal           = false
   load_balancer_type = "application"
-  security_groups   = [aws_security_group.alb_sg.id]
+  security_groups    = [aws_security_group.alb_sg.id]
   subnets            = module.vpc.public_subnets
-  enable_deletion_protection = false
+  enable_deletion_protection      = false
   enable_cross_zone_load_balancing = true
 
   tags = {
@@ -44,10 +42,10 @@ resource "aws_lb_target_group" "devops_target_group" {
   target_type = "ip"
 
   health_check {
-    path = "/"
-    interval = 30
-    timeout  = 5
-    healthy_threshold = 2
+    path                = "/"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
     unhealthy_threshold = 2
   }
 
