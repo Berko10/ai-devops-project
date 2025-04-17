@@ -10,11 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Configure AWS Defaults
       - name: Set AWS Region Defaults
         run: |
           echo "Checking AWS region..."
@@ -28,7 +26,6 @@ jobs:
             echo "✅ Using region from secrets: ${{ secrets.AWS_REGION }}"
           fi
 
-      # Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -39,19 +36,28 @@ jobs:
       - name: Remove .terraform directory
         run: rm -rf terraform/.terraform
 
-      # Install Terraform
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: '1.6.6'
 
-      # Terraform Init & Backend Setup
       - name: Terraform Init & Backend Setup
         working-directory: terraform/backend
         run: |
           terraform init
-          terraform plan -out=tfplan || echo "❌ Plan failed, skipping problematic resources"
-          terraform apply -auto-approve || echo "✅ Skipping problematic resources if already exist"
+          terraform plan -out=tfplan
+          terraform apply -auto-approve -input=false || {
+            ERR=$?
+            echo "Terraform apply failed with exit code $ERR"
+            LOG=$(terraform apply -auto-approve -input=false 2>&1 || true)
+            if echo "$LOG" | grep -q "already exists"; then
+              echo "⚠️ Resource already exists. Continuing..."
+            else
+              echo "$LOG"
+              echo "❌ Unhandled error in backend apply. Exiting."
+              exit $ERR
+            fi
+          }
 
       - name: Test Terraform Output Fix
         working-directory: terraform/backend
@@ -59,39 +65,26 @@ jobs:
           BUCKET=$(terraform output -raw tf_state_bucket_name)
           echo "✅ BUCKET=$BUCKET"
 
-      # Extract Backend Outputs
       - name: Extract Backend Outputs
         working-directory: terraform/backend
         shell: bash
         run: |
           echo "🔍 Extracting Terraform outputs..."
 
-          # הפקת הערכים
-          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name 2>/dev/null | grep -v '^[[:space:]]*\[command\]' | head -n 1 | sed 's/::debug::.*//' | tr -d '\r\n')
-          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name 2>/dev/null | grep -v '^[[:space:]]*\[command\]' | head -n 1 | sed 's/::debug::.*//' | tr -d '\r\n')
+          TF_BUCKET_NAME=$(terraform output -raw tf_state_bucket_name 2>/dev/null | tr -d '\r\n')
+          DYNAMO_TABLE_NAME=$(terraform output -raw dynamo_table_name 2>/dev/null | tr -d '\r\n')
 
           echo "✅ Outputs extracted:"
           echo "TF_BUCKET_NAME=$TF_BUCKET_NAME"
           echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME"
 
-          # בדיקת תקינות
           if [ -z "$TF_BUCKET_NAME" ] || [ -z "$DYNAMO_TABLE_NAME" ]; then
             echo "❌ ERROR - One or more outputs are empty!"
             exit 1
           fi
 
-          # הזרקת ערכים ל־GitHub Actions env
-          if [ -n "$TF_BUCKET_NAME" ]; then
-            echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
-          else
-            echo "❌ TF_BUCKET_NAME is empty!" && exit 1
-          fi
-
-          if [ -n "$DYNAMO_TABLE_NAME" ]; then
-            echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
-          else
-            echo "❌ DYNAMO_TABLE_NAME is empty!" && exit 1
-          fi
+          echo "TF_BUCKET_NAME=$TF_BUCKET_NAME" >> $GITHUB_ENV
+          echo "DYNAMO_TABLE_NAME=$DYNAMO_TABLE_NAME" >> $GITHUB_ENV
 
           echo "📄 GITHUB_ENV content:"
           cat $GITHUB_ENV
@@ -99,12 +92,10 @@ jobs:
       - name: Terraform Init (Main)
         working-directory: terraform/main
         run: |
-          # Print debug info
           echo "Using bucket: $TF_BUCKET_NAME"
           echo "Using dynamodb table: $DYNAMO_TABLE_NAME"
           echo "Using region: $AWS_REGION"
 
-          # Initialize Terraform with backend config
           terraform init -reconfigure \
             -backend-config="bucket=$TF_BUCKET_NAME" \
             -backend-config="key=main/terraform.tfstate" \
@@ -114,31 +105,40 @@ jobs:
       - name: Terraform Plan (Main)
         working-directory: terraform/main
         run: |
-            terraform plan -out=tfplan || ( \
-            if echo "$?" | grep -q "already exists"; then \
-              echo "⚠️ Resource already exists, skipping creation..."; \
-            else \
-              exit 1; \
-            fi )
+          terraform plan -out=tfplan || {
+            ERR=$?
+            LOG=$(terraform plan -out=tfplan 2>&1 || true)
+            if echo "$LOG" | grep -q "already exists"; then
+              echo "⚠️ Resource already exists during plan. Continuing..."
+            else
+              echo "$LOG"
+              echo "❌ Unhandled error in main plan. Exiting."
+              exit $ERR
+            fi
+          }
 
       - name: Terraform Apply (Main)
         working-directory: terraform/main
         run: |
-          terraform apply -auto-approve -input=false || ( \
-            if echo "$?" | grep -q "already exists"; then \
-              echo "⚠️ Resource already exists, skipping creation..."; \
-            else \
-              exit 1; \
-            fi )
+          terraform apply -auto-approve -input=false || {
+            ERR=$?
+            LOG=$(terraform apply -auto-approve -input=false 2>&1 || true)
+            if echo "$LOG" | grep -q "already exists"; then
+              echo "⚠️ Resource already exists during apply. Continuing..."
+            else
+              echo "$LOG"
+              echo "❌ Unhandled error in main apply. Exiting."
+              exit $ERR
+            fi
+          }
 
-        # Extract and Use ECR Outputs
       - name: Extract ECR Outputs
         working-directory: terraform/main
         run: |
           echo "--- Terraform Output (ecr_repo_name) ---"
           terraform output -raw ecr_repo_name 2>/dev/null
           echo "--- End Terraform Output ---"
-          ECR_REPO_NAME=$(terraform output -raw ecr_repo_name 2>/dev/null | grep -v '^[[:space:]]*\[command\]' | head -n 1 | sed 's/╷//g' | tr -d '\r\n')
+          ECR_REPO_NAME=$(terraform output -raw ecr_repo_name 2>/dev/null | tr -d '\r\n')
           echo ECR_REPO_NAME=$ECR_REPO_NAME
           if [ -n "$ECR_REPO_NAME" ]; then
             echo "ECR_REPO_NAME=$ECR_REPO_NAME" >> $GITHUB_ENV
