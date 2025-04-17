@@ -25,15 +25,11 @@ module "ecs" {
   source  = "terraform-aws-modules/ecs/aws"
   version = "5.12.0"
 
-  cluster_name = "devops-cluster"
-  vpc_id       = module.vpc.vpc_id
-  subnets      = module.vpc.public_subnets
+  cluster_name = "devops-cluster"  # לא משנה את השם, השתמש ב-cluster_name ולא ב-name
 
   tags = {
     Project = "DevOpsProject"
   }
-
-  depends_on = [module.vpc]
 }
 
 # IAM Role for ECS task execution
@@ -99,18 +95,18 @@ resource "aws_ecs_service" "app" {
   task_definition = aws_ecs_task_definition.app.arn
 
   network_configuration {
-    subnets         = module.vpc.public_subnets
+    subnets         = module.vpc.public_subnets   # משתמש ב-subnets מתוך מודול ה-VPC
     assign_public_ip = true
-    security_groups = [aws_security_group.alb_sg.id]
+    security_groups = [aws_security_group.alb_sg.id]  # מוגדר ב-alb.tf
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.devops_target_group.arn
+    target_group_arn = aws_lb_target_group.devops_target_group.arn  # מוגדר ב-alb.tf
     container_name   = "devops-app"
     container_port   = 5000
   }
 
-  depends_on = [aws_lb.devops_alb]
+  depends_on = [aws_lb.devops_alb]  # מוגדר ב-alb.tf
 }
 
 # Auto Scaling for ECS Service
