@@ -36,6 +36,17 @@ jobs:
           terraform_version: '1.6.6'
 
       # ------------------------
+      # 🔹 INITIAL INFRA
+      # ------------------------
+      - name: Destroy Conflicting Resources
+        working-directory: terraform/main
+        run: terraform destroy -auto-approve || true
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: "us-east-1"
+
+      # ------------------------
       # 🔹 BACKEND APPLY
       # ------------------------
       - name: Terraform Init & Apply (Backend)
