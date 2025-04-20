@@ -39,7 +39,7 @@ jobs:
         run: |
           terraform init
           terraform plan -out=tfplan
-          TF_LOG=DEBUG terraform apply -auto-approve -input=false || {
+          terraform apply -auto-approve -input=false || {
             ERR=$?
             echo "Terraform apply failed with exit code $ERR"
             LOG=$(terraform apply -auto-approve -input=false 2>&1 || true)
