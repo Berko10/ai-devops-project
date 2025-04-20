@@ -210,6 +210,9 @@ resource "aws_ecs_task_definition" "app" {
       }
     }
   }])
+  depends_on = [
+  aws_ecr_repository.app
+  ]
 }
 
 resource "aws_ecs_service" "app" {
@@ -231,7 +234,11 @@ resource "aws_ecs_service" "app" {
     container_port   = 5000
   }
 
-  depends_on = [aws_lb.devops_alb]
+  depends_on = [
+  aws_ecs_task_definition.app,
+  aws_lb_target_group.app,
+  aws_lb_listener.http
+  ]
 }
 
 ######################## 
