@@ -84,21 +84,6 @@ jobs:
         working-directory: terraform/main
         run: |
           terraform init 
-
-       # ------------------------
-      # 🔹 IMPORT EXISTING RESOURCES
-      # ------------------------
-      - name: Import all existing resources into Terraform state
-        working-directory: terraform/main
-        run: |
-          echo "🚀 Importing all existing resources into Terraform state..."
-          echo $(TF_LOG=DEBUG terraform state list)
-          resources=$(terraform state list)
-          echo $resources
-          for resource in $resources; do
-            echo "Importing resource: $resource"
-            TF_LOG=DEBUG terraform import $resource $(terraform state show -no-color $resource | grep 'id =' | awk '{print $3}') || echo "Resource $resource already exists in state"
-          done
       
       # ------------------------
       # 🔹 APPLY ECR בלבד
@@ -160,6 +145,21 @@ jobs:
           echo "📤 Pushing Docker Image: $ECR_REPO_NAME
           docker push $ECR_REPO_NAME
 
+       # ------------------------
+      # 🔹 IMPORT EXISTING RESOURCES
+      # ------------------------
+      - name: Import all existing resources into Terraform state
+        working-directory: terraform/main
+        run: |
+          echo "🚀 Importing all existing resources into Terraform state..."
+          echo $(TF_LOG=DEBUG terraform state list)
+          resources=$(terraform state list)
+          echo $resources
+          for resource in $resources; do
+            echo "Importing resource: $resource"
+            TF_LOG=DEBUG terraform import $resource $(terraform state show -no-color $resource | grep 'id =' | awk '{print $3}') || echo "Resource $resource already exists in state"
+          done
+          
       # ------------------------
       # 🔹 APPLY כל שאר התשתית (ECS וכו')
       # ------------------------
