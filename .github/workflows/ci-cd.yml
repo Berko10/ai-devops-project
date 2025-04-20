@@ -108,6 +108,7 @@ jobs:
           }
 
       - name: Ensure ECR repo exists or import into Terraform
+        working-directory: terraform/main
         run: |
           if aws ecr describe-repositories --repository-names devops-app > /dev/null 2>&1; then
             echo "✅ ECR repo already exists. Importing..."
