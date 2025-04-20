@@ -10,5 +10,5 @@ variable "dynamo_table_name" {
 
 variable "s3_bucket_name" {
   description = "S3 bucket for Terraform state file"
-  default = "ai-devops-project-tf-state-1234"
+  default = "ai-devops-project-tf-state-12346"
 }
