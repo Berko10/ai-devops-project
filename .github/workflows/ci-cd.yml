@@ -155,8 +155,6 @@ jobs:
         working-directory: terraform/main
         run: |
           terraform init
-          terraform plan 
-          export TF_LOG=DEBUG
           terraform apply -auto-approve -input=false || {
             ERR=$?
             echo "Terraform apply failed with exit code $ERR"
