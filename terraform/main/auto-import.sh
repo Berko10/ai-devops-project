@@ -4,6 +4,7 @@
 AWS_REGION="us-east-1"
 TAG_KEY="Project"
 TAG_VALUE="DevOpsProject"
+BACKEND_FILE="backend/setup.tf"
 
 # פונקציה שמבצעת חיפוש של משאבים עם ה-tag הנדרש
 find_resources_with_tag() {
@@ -30,9 +31,18 @@ import_resources_to_state() {
     resource_type=$(echo $arn | cut -d':' -f3)
     resource_id=$(echo $arn | cut -d':' -f6)
 
+    # בדוק אם המשאב כבר קיים בקובץ backend/setup.tf
+    if grep -q "$resource_type.$resource_id" "$BACKEND_FILE"; then
+      echo "Resource $resource_type/$resource_id already exists in $BACKEND_FILE, skipping import."
+      continue
+    fi
+
     # הוסף כל משאב ל-state של Terraform
     echo "Importing resource $resource_type/$resource_id..."
     terraform import "$resource_type.$resource_id" "$arn"
+    
+    # עדכן את קובץ backend/setup.tf עם המשאב החדש
+    echo "resource \"$resource_type\" \"$resource_id\" {}" >> "$BACKEND_FILE"
   done
 }
 
