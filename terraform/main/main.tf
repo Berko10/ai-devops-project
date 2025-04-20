@@ -280,7 +280,7 @@ terraform {
   backend "s3" {
     bucket         = "ai-devops-project-tf-state-1234"
     key            = "main/terraform.tfstate"
-    region         = var.aws_region
+    region         = us-east-1
     dynamodb_table = "ai-devops-project-locks"
   }
 }
