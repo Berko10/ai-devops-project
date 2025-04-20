@@ -1,0 +1,41 @@
+#!/bin/bash
+
+set -e
+
+echo "🔍 מחפש משאבים קיימים ב-AWS..."
+
+existing_resources=$(aws resourcegroupstaggingapi get-resources --output json | jq -r '.ResourceTagMappingList[].ResourceARN')
+
+cd "$(dirname "$0")"
+
+terraform init -input=false
+
+echo "🚀 בודק אילו משאבים ניתן לייבא ל-Terraform..."
+
+while IFS= read -r arn; do
+  # חילוץ סוג השירות והשם מה-ARN
+  service=$(echo "$arn" | cut -d':' -f6 | cut -d'/' -f1)
+  identifier=$(echo "$arn" | cut -d'/' -f2-)
+
+  # מציאת שם ה-RESOURCE בקוד Terraform שלך
+  tf_resource=$(terraform state list 2>/dev/null | grep "$identifier" || true)
+
+  if [ -z "$tf_resource" ]; then
+    # אם לא קיים ב-STATE, ננסה לייבא
+    echo "📦 מייבא: $arn (service: $service, id: $identifier)"
+
+    # נניח שיש לך משאבים בשם תואם, לדוגמה: aws_lb.my_alb
+    # אז תוכל לבצע:
+    match=$(grep -rl "$identifier" . | grep .tf | head -n 1)
+
+    if [ -n "$match" ]; then
+      resource_name=$(grep "$identifier" "$match" | grep 'resource "' | awk '{print $2"."$3}' | tr -d '"')
+      echo "🎯 תואם ל-Terraform resource: $resource_name"
+      terraform import "$resource_name" "$identifier" || echo "⚠️ Import נכשל או כבר קיים"
+    else
+      echo "⚠️ לא נמצא קובץ שמתאים ל-$identifier, מדלג..."
+    fi
+  else
+    echo "✅ כבר קיים ב-state: $tf_resource"
+  fi
+done <<< "$existing_resources"
