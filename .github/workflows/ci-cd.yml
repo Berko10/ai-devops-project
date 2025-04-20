@@ -95,12 +95,12 @@ jobs:
       - name: Import all existing resources into Terraform state
         working-directory: terraform/main
         run: |
-          export TF_LOG=DEBUG
           echo "🚀 Importing all existing resources into Terraform state..."
+          export TF_LOG=DEBUG
           resources=$(terraform state list)
           for resource in $resources; do
             echo "Importing resource: $resource"
-            terraform import $resource $(terraform state show -no-color $resource | grep 'id =' | awk '{print $3}') || echo "Resource $resource already exists in state"
+            TF_LOG=DEBUG terraform import $resource $(terraform state show -no-color $resource | grep 'id =' | awk '{print $3}') || echo "Resource $resource already exists in state"
           done
       
       # ------------------------
