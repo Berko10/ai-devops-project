@@ -148,21 +148,12 @@ jobs:
        # ------------------------
       # 🔹 IMPORT EXISTING RESOURCES
       # ------------------------
-      - name: Import all existing resources into Terraform state
+      - name: Auto-import existing AWS resources
         working-directory: terraform/main
         run: |
-          echo "🚀 Importing all existing resources into Terraform state..."
-          resources=$(terraform state list)
-          for resource in $resources; do
-            echo "Importing resource: $resource"
-            resource_id=$(terraform state show -no-color $resource | grep 'id =' | awk '{print $3}')
-            if [ -n "$resource_id" ]; then
-              terraform import $resource $resource_id || echo "Resource $resource already exists in state"
-            else
-              echo "Failed to extract id for $resource, skipping..."
-            fi
-          done
-          
+          chmod +x auto-import.sh
+          ./auto-import.sh
+
       # ------------------------
       # 🔹 APPLY כל שאר התשתית (ECS וכו')
       # ------------------------
