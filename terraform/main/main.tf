@@ -1,17 +1,17 @@
-######################################
-# main.tf - Complete Infra Without Modules
-######################################
+###################################### 
+# main.tf - Complete Infra Without Modules 
+###################################### 
 
 provider "aws" {
   region = var.aws_region
 }
 
-########################
-# VPC and Networking
-########################
+######################## 
+# VPC and Networking 
+######################## 
 
 resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
+  cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
 
@@ -23,7 +23,7 @@ resource "aws_vpc" "main" {
 
 resource "aws_subnet" "public_a" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
+  cidr_block              = var.public_subnet_cidrs[0]
   availability_zone       = "${var.aws_region}a"
   map_public_ip_on_launch = true
 
@@ -34,7 +34,7 @@ resource "aws_subnet" "public_a" {
 
 resource "aws_subnet" "public_b" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.2.0/24"
+  cidr_block              = var.public_subnet_cidrs[1]
   availability_zone       = "${var.aws_region}b"
   map_public_ip_on_launch = true
 
@@ -74,9 +74,9 @@ resource "aws_route_table_association" "b" {
   route_table_id = aws_route_table.public.id
 }
 
-########################
-# Security Group
-########################
+######################## 
+# Security Group 
+######################## 
 
 resource "aws_security_group" "alb_sg" {
   name        = "alb-sg"
@@ -98,9 +98,9 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
-########################
-# ALB + Target Group
-########################
+######################## 
+# ALB + Target Group 
+######################## 
 
 resource "aws_lb" "devops_alb" {
   name                             = "devops-alb"
@@ -143,9 +143,9 @@ resource "aws_lb_listener" "devops_listener" {
   }
 }
 
-########################
-# ECS + ECR
-########################
+######################## 
+# ECS + ECR 
+######################## 
 
 resource "aws_ecs_cluster" "devops_cluster" {
   name = "devops-cluster"
@@ -224,9 +224,9 @@ resource "aws_ecs_service" "app" {
   depends_on = [aws_lb.devops_alb]
 }
 
-########################
-# Auto Scaling for ECS
-########################
+######################## 
+# Auto Scaling for ECS 
+######################## 
 
 resource "aws_appautoscaling_target" "ecs_scaling_target" {
   max_capacity       = 3
@@ -254,15 +254,17 @@ resource "aws_appautoscaling_policy" "cpu_scaling_policy" {
   }
 }
 
-########################
-# Terraform Backend
-########################
+######################## 
+# Terraform Backend 
+######################## 
 
 terraform {
   backend "s3" {
     bucket         = "ai-devops-project-tf-state"
     key            = "main/terraform.tfstate"
-    region         = "us-east-1"
+    region         = var.aws_region
     dynamodb_table = "ai-devops-project-locks"
   }
 }
+
+
