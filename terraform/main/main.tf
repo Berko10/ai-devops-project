@@ -237,7 +237,7 @@ resource "aws_ecs_service" "app" {
 
   depends_on = [
   aws_ecs_task_definition.app,
-  aws_lb.devops_alb
+  aws_lb.devops_alb,
   aws_lb_listener.devops_listener
   ]
 }
