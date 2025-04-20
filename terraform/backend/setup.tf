@@ -12,7 +12,8 @@ resource "aws_s3_bucket" "tf_state" {
   force_destroy = true
 
   tags = {
-    Name = "Terraform State Bucket"
+    Name    = "Terraform State Bucket"
+    Project = "DevOpsProject"
   }
 }
 
@@ -21,6 +22,11 @@ resource "aws_s3_bucket_versioning" "tf_state_versioning" {
 
   versioning_configuration {
     status = "Enabled"
+  }
+
+  tags = {
+    Name    = "Terraform State Versioning"
+    Project = "DevOpsProject"
   }
 }
 
@@ -31,6 +37,11 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "tf_state_sse" {
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
     }
+  }
+
+  tags = {
+    Name    = "Terraform State SSE"
+    Project = "DevOpsProject"
   }
 }
 
@@ -45,6 +56,7 @@ resource "aws_dynamodb_table" "tf_lock" {
   }
 
   tags = {
-    Name = "Terraform Lock Table"
+    Name    = "Terraform Lock Table"
+    Project = "DevOpsProject"
   }
 }
