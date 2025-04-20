@@ -212,6 +212,7 @@ resource "aws_ecs_task_definition" "app" {
   }])
   depends_on = [
   aws_ecr_repository.app_repo
+  aws_iam_role.ecs_task_exec_role
   ]
 }
 
@@ -236,7 +237,7 @@ resource "aws_ecs_service" "app" {
 
   depends_on = [
   aws_ecs_task_definition.app,
-  aws_lb_target_group.devops_target_group,
+  aws_lb.devops_alb
   aws_lb_listener.devops_listener
   ]
 }
