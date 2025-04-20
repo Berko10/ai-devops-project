@@ -277,7 +277,7 @@ resource "aws_appautoscaling_policy" "cpu_scaling_policy" {
 
 terraform {
   backend "s3" {
-    bucket         = "ai-devops-project-tf-state"
+    bucket         = "ai-devops-project-tf-state-12345"
     key            = "main/terraform.tfstate"
     region         = var.aws_region
     dynamodb_table = "ai-devops-project-locks"
