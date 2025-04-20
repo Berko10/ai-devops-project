@@ -28,7 +28,8 @@ resource "aws_subnet" "public_a" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "public-subnet-a"
+    Name    = "public-subnet-a"
+    Project = "DevOpsProject"
   }
 }
 
@@ -39,7 +40,8 @@ resource "aws_subnet" "public_b" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "public-subnet-b"
+    Name    = "public-subnet-b"
+    Project = "DevOpsProject"
   }
 }
 
@@ -47,7 +49,8 @@ resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "devops-igw"
+    Name    = "devops-igw"
+    Project = "DevOpsProject"
   }
 }
 
@@ -60,7 +63,8 @@ resource "aws_route_table" "public" {
   }
 
   tags = {
-    Name = "devops-public-rt"
+    Name    = "devops-public-rt"
+    Project = "DevOpsProject"
   }
 }
 
@@ -96,6 +100,11 @@ resource "aws_security_group" "alb_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = {
+    Name    = "alb-sg"
+    Project = "DevOpsProject"
+  }
 }
 
 ######################## 
@@ -112,7 +121,8 @@ resource "aws_lb" "devops_alb" {
   enable_cross_zone_load_balancing = true
 
   tags = {
-    Name = "devops-alb"
+    Name    = "devops-alb"
+    Project = "DevOpsProject"
   }
 }
 
@@ -130,6 +140,11 @@ resource "aws_lb_target_group" "devops_target_group" {
     healthy_threshold   = 2
     unhealthy_threshold = 2
   }
+
+  tags = {
+    Name    = "devops-target-group"
+    Project = "DevOpsProject"
+  }
 }
 
 resource "aws_lb_listener" "devops_listener" {
@@ -141,6 +156,11 @@ resource "aws_lb_listener" "devops_listener" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.devops_target_group.arn
   }
+
+  tags = {
+    Name    = "devops-listener"
+    Project = "DevOpsProject"
+  }
 }
 
 ######################## 
@@ -149,6 +169,11 @@ resource "aws_lb_listener" "devops_listener" {
 
 resource "aws_ecs_cluster" "devops_cluster" {
   name = "devops-cluster"
+
+  tags = {
+    Name    = "devops-cluster"
+    Project = "DevOpsProject"
+  }
 }
 
 resource "aws_ecr_repository" "app_repo" {
@@ -161,7 +186,8 @@ resource "aws_ecr_repository" "app_repo" {
   }
 
   tags = {
-    Name = "devops-app"
+    Name    = "devops-app"
+    Project = "DevOpsProject"
   }
 }
 
@@ -170,7 +196,7 @@ resource "aws_iam_role" "ecs_task_exec_role" {
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
-    Statement = [{
+    Statement = [ {
       Effect = "Allow",
       Principal = {
         Service = "ecs-tasks.amazonaws.com"
@@ -178,6 +204,11 @@ resource "aws_iam_role" "ecs_task_exec_role" {
       Action = "sts:AssumeRole"
     }]
   })
+
+  tags = {
+    Name    = "ecs-task-execution-role"
+    Project = "DevOpsProject"
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
@@ -197,7 +228,7 @@ resource "aws_ecs_task_definition" "app" {
     name        = "devops-app",
     image       = "${aws_ecr_repository.app_repo.repository_url}:latest",
     essential   = true,
-    portMappings = [{
+    portMappings = [ {
       containerPort = 5000,
       hostPort      = 5000
     }],
@@ -211,9 +242,14 @@ resource "aws_ecs_task_definition" "app" {
     }
   }])
   depends_on = [
-  aws_ecr_repository.app_repo,
-  aws_iam_role.ecs_task_exec_role
+    aws_ecr_repository.app_repo,
+    aws_iam_role.ecs_task_exec_role
   ]
+
+  tags = {
+    Name    = "devops-task-definition"
+    Project = "DevOpsProject"
+  }
 }
 
 resource "aws_ecs_service" "app" {
@@ -236,10 +272,15 @@ resource "aws_ecs_service" "app" {
   }
 
   depends_on = [
-  aws_ecs_task_definition.app,
-  aws_lb.devops_alb,
-  aws_lb_listener.devops_listener
+    aws_ecs_task_definition.app,
+    aws_lb.devops_alb,
+    aws_lb_listener.devops_listener
   ]
+
+  tags = {
+    Name    = "devops-ecs-service"
+    Project = "DevOpsProject"
+  }
 }
 
 ######################## 
@@ -252,6 +293,11 @@ resource "aws_appautoscaling_target" "ecs_scaling_target" {
   resource_id        = "service/${aws_ecs_cluster.devops_cluster.name}/${aws_ecs_service.app.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
+
+  tags = {
+    Name    = "ecs-scaling-target"
+    Project = "DevOpsProject"
+  }
 }
 
 resource "aws_appautoscaling_policy" "cpu_scaling_policy" {
@@ -270,6 +316,11 @@ resource "aws_appautoscaling_policy" "cpu_scaling_policy" {
     scale_in_cooldown  = 60
     scale_out_cooldown = 60
   }
+
+  tags = {
+    Name    = "cpu-scaling-policy"
+    Project = "DevOpsProject"
+  }
 }
 
 ######################## 
@@ -278,11 +329,8 @@ resource "aws_appautoscaling_policy" "cpu_scaling_policy" {
 
 terraform {
   backend "s3" {
-    bucket         = "ai-devops-project-tf-state-1234"
-    key            = "main/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "terraform-locks"
+    bucket = var.s3_bucket
+    key    = "terraform/state/terraform.tfstate"
+    region = var.aws_region
   }
 }
-
-
