@@ -1,41 +1,40 @@
 #!/bin/bash
 
-set -e
+# הגדרת פרטי הקונפיגורציה
+AWS_REGION="us-east-1"
+TAG_KEY="Project"
+TAG_VALUE="DevOpsProject"
 
-echo "🔍 מחפש משאבים קיימים ב-AWS..."
+# פונקציה שמבצעת חיפוש של משאבים עם ה-tag הנדרש
+find_resources_with_tag() {
+  aws resourcegroupstaggingapi get-resources \
+    --region $AWS_REGION \
+    --tag-filters Key=$TAG_KEY,Values=$TAG_VALUE \
+    --output json
+}
 
-existing_resources=$(aws resourcegroupstaggingapi get-resources --output json | jq -r '.ResourceTagMappingList[].ResourceARN')
+# פונקציה שמבצעת את ה-import לכל משאב שנמצא
+import_resources_to_state() {
+  resources_json=$(find_resources_with_tag)
 
-cd "$(dirname "$0")"
-
-terraform init -input=false
-
-echo "🚀 בודק אילו משאבים ניתן לייבא ל-Terraform..."
-
-while IFS= read -r arn; do
-  # חילוץ סוג השירות והשם מה-ARN
-  service=$(echo "$arn" | cut -d':' -f6 | cut -d'/' -f1)
-  identifier=$(echo "$arn" | cut -d'/' -f2-)
-
-  # מציאת שם ה-RESOURCE בקוד Terraform שלך
-  tf_resource=$(terraform state list 2>/dev/null | grep "$identifier" || true)
-
-  if [ -z "$tf_resource" ]; then
-    # אם לא קיים ב-STATE, ננסה לייבא
-    echo "📦 מייבא: $arn (service: $service, id: $identifier)"
-
-    # נניח שיש לך משאבים בשם תואם, לדוגמה: aws_lb.my_alb
-    # אז תוכל לבצע:
-    match=$(grep -rl "$identifier" . | grep .tf | head -n 1)
-
-    if [ -n "$match" ]; then
-      resource_name=$(grep "$identifier" "$match" | grep 'resource "' | awk '{print $2"."$3}' | tr -d '"')
-      echo "🎯 תואם ל-Terraform resource: $resource_name"
-      terraform import "$resource_name" "$identifier" || echo "⚠️ Import נכשל או כבר קיים"
-    else
-      echo "⚠️ לא נמצא קובץ שמתאים ל-$identifier, מדלג..."
-    fi
-  else
-    echo "✅ כבר קיים ב-state: $tf_resource"
+  # אם אין משאבים מתאימים, תצא מהסקריפט
+  if [ "$(echo $resources_json | jq '.ResourceTagMappingList | length')" -eq 0 ]; then
+    echo "No resources found with tag $TAG_KEY=$TAG_VALUE"
+    exit 0
   fi
-done <<< "$existing_resources"
+
+  # עבור כל משאב שנמצא, הוסף אותו ל-state
+  resource_arns=$(echo $resources_json | jq -r '.ResourceTagMappingList[].ResourceARN')
+
+  for arn in $resource_arns; do
+    resource_type=$(echo $arn | cut -d':' -f3)
+    resource_id=$(echo $arn | cut -d':' -f6)
+
+    # הוסף כל משאב ל-state של Terraform
+    echo "Importing resource $resource_type/$resource_id..."
+    terraform import "$resource_type.$resource_id" "$arn"
+  done
+}
+
+# הרץ את הפונקציה
+import_resources_to_state
