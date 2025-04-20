@@ -139,18 +139,14 @@ jobs:
       # 🔹 DOCKER BUILD + PUSH
       # ------------------------
       - name: Build and Push Docker Image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          IMAGE_URI=$ECR_REGISTRY/$ECR_REPO_NAME:latest
           echo "🏗️ Building Docker Image: $IMAGE_URI"
           docker build -t $ECR_REPO_NAME ./app
 
-          echo "🏷️ Tagging Docker Image as: $IMAGE_URI"
-          docker tag $ECR_REPO_NAME $IMAGE_URI
+          echo "🏷️ Tagging Docker Image as: $ECR_REPO_NAME
 
-          echo "📤 Pushing Docker Image: $IMAGE_URI"
-          docker push $IMAGE_URI
+          echo "📤 Pushing Docker Image: $ECR_REPO_NAME
+          docker push $ECR_REPO_NAME
 
       # ------------------------
       # 🔹 APPLY כל שאר התשתית (ECS וכו')
