@@ -1,38 +1,166 @@
+######################################
+# main.tf - Complete Infra Without Modules
+######################################
+
 provider "aws" {
   region = var.aws_region
 }
 
-# יצירת VPC בסיסי
-module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "5.1.0"
+########################
+# VPC and Networking
+########################
 
-  name = "devops-vpc"
-  cidr = "10.0.0.0/16"
-
-  azs       = ["${var.aws_region}a", "${var.aws_region}b"]
-  public_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
-
+resource "aws_vpc" "main" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
   enable_dns_hostnames = true
-  enable_nat_gateway   = false
 
   tags = {
+    Name    = "devops-vpc"
     Project = "DevOpsProject"
   }
 }
 
-# יצירת ECS Cluster
+resource "aws_subnet" "public_a" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "${var.aws_region}a"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "public-subnet-a"
+  }
+}
+
+resource "aws_subnet" "public_b" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.2.0/24"
+  availability_zone       = "${var.aws_region}b"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "public-subnet-b"
+  }
+}
+
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "devops-igw"
+  }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "devops-public-rt"
+  }
+}
+
+resource "aws_route_table_association" "a" {
+  subnet_id      = aws_subnet.public_a.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "b" {
+  subnet_id      = aws_subnet.public_b.id
+  route_table_id = aws_route_table.public.id
+}
+
+########################
+# Security Group
+########################
+
+resource "aws_security_group" "alb_sg" {
+  name        = "alb-sg"
+  description = "Allow HTTP"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+########################
+# ALB + Target Group
+########################
+
+resource "aws_lb" "devops_alb" {
+  name                             = "devops-alb"
+  internal                         = false
+  load_balancer_type               = "application"
+  security_groups                  = [aws_security_group.alb_sg.id]
+  subnets                          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+  enable_deletion_protection       = false
+  enable_cross_zone_load_balancing = true
+
+  tags = {
+    Name = "devops-alb"
+  }
+}
+
+resource "aws_lb_target_group" "devops_target_group" {
+  name        = "devops-target-group"
+  port        = 5000
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = aws_vpc.main.id
+
+  health_check {
+    path                = "/"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+  }
+}
+
+resource "aws_lb_listener" "devops_listener" {
+  load_balancer_arn = aws_lb.devops_alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.devops_target_group.arn
+  }
+}
+
+########################
+# ECS + ECR
+########################
+
 resource "aws_ecs_cluster" "devops_cluster" {
   name = "devops-cluster"
 }
 
-# IAM Role for ECS task execution
+resource "aws_ecr_repository" "app_repo" {
+  name = "devops-app"
+}
+
 resource "aws_iam_role" "ecs_task_exec_role" {
   name = "ecsTaskExecutionRole"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
-    Statement = [ {
+    Statement = [{
       Effect = "Allow",
       Principal = {
         Service = "ecs-tasks.amazonaws.com"
@@ -47,12 +175,6 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# יצירת ריפוזיטורי ב-ECR
-resource "aws_ecr_repository" "app_repo" {
-  name = "devops-app"
-}
-
-# ECS Task Definition
 resource "aws_ecs_task_definition" "app" {
   family                   = "devops-app"
   requires_compatibilities = ["FARGATE"]
@@ -62,25 +184,24 @@ resource "aws_ecs_task_definition" "app" {
   execution_role_arn       = aws_iam_role.ecs_task_exec_role.arn
 
   container_definitions = jsonencode([{
-    name        = "devops-app"
-    image       = "${aws_ecr_repository.app_repo.repository_url}:latest"
-    essential   = true
+    name        = "devops-app",
+    image       = "${aws_ecr_repository.app_repo.repository_url}:latest",
+    essential   = true,
     portMappings = [{
-      containerPort = 5000
+      containerPort = 5000,
       hostPort      = 5000
-    }]
+    }],
     logConfiguration = {
-      logDriver = "awslogs"
+      logDriver = "awslogs",
       options = {
-        "awslogs-group"     = "/ecs/devops-app"
-        "awslogs-region"    = var.aws_region
-        "awslogs-stream-prefix" = "devops-app"
+        awslogs-group         = "/ecs/devops-app",
+        awslogs-region        = var.aws_region,
+        awslogs-stream-prefix = "devops-app"
       }
     }
   }])
 }
 
-# ECS Service
 resource "aws_ecs_service" "app" {
   name            = "devops-service"
   cluster         = aws_ecs_cluster.devops_cluster.id
@@ -89,41 +210,59 @@ resource "aws_ecs_service" "app" {
   task_definition = aws_ecs_task_definition.app.arn
 
   network_configuration {
-    subnets         = module.vpc.public_subnets   # משתמש ב-subnets מתוך מודול ה-VPC
+    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
     assign_public_ip = true
-    security_groups = [aws_security_group.alb_sg.id]  # מוגדר ב-alb.tf
+    security_groups = [aws_security_group.alb_sg.id]
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.devops_target_group.arn  # מוגדר ב-alb.tf
+    target_group_arn = aws_lb_target_group.devops_target_group.arn
     container_name   = "devops-app"
     container_port   = 5000
   }
 
-  depends_on = [aws_lb.devops_alb]  # מוגדר ב-alb.tf
+  depends_on = [aws_lb.devops_alb]
 }
 
-# Auto Scaling for ECS Service
-resource "aws_appautoscaling_target" "ecs_target" {
-  max_capacity       = 4
+########################
+# Auto Scaling for ECS
+########################
+
+resource "aws_appautoscaling_target" "ecs_scaling_target" {
+  max_capacity       = 3
   min_capacity       = 1
-  resource_id        = "service/${aws_ecs_cluster.devops_cluster.id}/devops-service"
+  resource_id        = "service/${aws_ecs_cluster.devops_cluster.name}/${aws_ecs_service.app.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }
 
-resource "aws_appautoscaling_policy" "ecs_scaling_policy" {
-  name               = "ecs-scale-policy"
+resource "aws_appautoscaling_policy" "cpu_scaling_policy" {
+  name               = "cpu-scaling-policy"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs_target.resource_id
-  scalable_dimension = "ecs:service:DesiredCount"
-  service_namespace  = "ecs"
+  resource_id        = aws_appautoscaling_target.ecs_scaling_target.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_scaling_target.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_scaling_target.service_namespace
+
   target_tracking_scaling_policy_configuration {
-    target_value       = 50.0
-    scale_in_cooldown  = 60
-    scale_out_cooldown = 60
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
+
+    target_value       = 50.0
+    scale_in_cooldown  = 60
+    scale_out_cooldown = 60
+  }
+}
+
+########################
+# Terraform Backend
+########################
+
+terraform {
+  backend "s3" {
+    bucket         = "ai-devops-project-tf-state"
+    key            = "main/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "ai-devops-project-locks"
   }
 }
