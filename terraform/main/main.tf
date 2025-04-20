@@ -316,11 +316,6 @@ resource "aws_appautoscaling_policy" "cpu_scaling_policy" {
     scale_in_cooldown  = 60
     scale_out_cooldown = 60
   }
-
-  tags = {
-    Name    = "cpu-scaling-policy"
-    Project = "DevOpsProject"
-  }
 }
 
 ######################## 
