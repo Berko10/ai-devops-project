@@ -1,41 +1,20 @@
+# =========================
+# VARIABLES
+# =========================
 variable "aws_region" {
-  description = "AWS Region"
-  default = "us-east-1"
+  description = "AWS region to deploy resources in"
+  type        = string
+  default     = "us-east-1"
 }
 
-variable "ecs_cluster_name" {
-  description = "ECS Cluster Name"
-  default = "my-ecs-cluster"
+variable "vpc_cidr" {
+  description = "CIDR block for the VPC"
+  type        = string
+  default     = "10.0.0.0/16"
 }
 
-variable "ecr_repo_name" {
-  description = "ECR Repo Name"
-  default = "my-ecr-repo"
+variable "public_subnet_cidrs" {
+  description = "List of public subnet CIDRs"
+  type        = list(string)
+  default     = ["10.0.1.0/24", "10.0.2.0/24"]
 }
-
-variable "alb_name" {
-  description = "ALB Name"
-  default = "my-alb"
-}
-
-variable "tf_bucket_name" {
-  description = "S3 bucket for Terraform state"
-  default = "my-devops-tf-state-bucket"
-}
-
-variable "dynamo_table_name" {
-  description = "DynamoDB table for Terraform state locking"
-  default = "terraform-locks"
-}
-
-variable "tfstate_path" {
-  description = "The path to tfstate file"
-  default = "main/terraform.tfstate"
-}
-
-variable "alb_target_group_key" {
-  description = "המפתח במפת קבוצות היעד במודול ALB (ברירת מחדל: devops)"
-  default     = "devops"
-}
-
-
