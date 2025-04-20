@@ -152,7 +152,17 @@ resource "aws_ecs_cluster" "devops_cluster" {
 }
 
 resource "aws_ecr_repository" "app_repo" {
-  name = "devops-app"
+  name                 = "devops-app"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+
+  lifecycle {
+    ignore_changes = [image_tag_mutability]
+  }
+
+  tags = {
+    Name = "devops-app"
+  }
 }
 
 resource "aws_iam_role" "ecs_task_exec_role" {
