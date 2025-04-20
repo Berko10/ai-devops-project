@@ -7,7 +7,8 @@ resource "random_id" "bucket_suffix" {
 }
 
 resource "aws_s3_bucket" "tf_state" {
-  bucket = "my-devops-tf-state-bucket-${random_id.bucket_suffix.hex}"
+  bucket = "my-devops-tf-state-bucket
+  
   force_destroy = true
 
   tags = {
