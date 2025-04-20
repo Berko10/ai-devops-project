@@ -156,7 +156,7 @@ jobs:
         run: |
           terraform init
           terraform plan 
-          terraform apply -auto-approve -input=false || {
+          terraform apply -debug -auto-approve -input=false || {
             ERR=$?
             echo "Terraform apply failed with exit code $ERR"
             LOG=$(terraform apply -auto-approve -input=false 2>&1 || true)
