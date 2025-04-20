@@ -1,12 +1,12 @@
-# =========================
-# OUTPUTS
-# =========================
+# ========================= 
+# OUTPUTS 
+# ========================= 
 output "vpc_id" {
   value = aws_vpc.main.id
 }
 
 output "public_subnet_ids" {
-  value = [aws_subnet.public_1.id, aws_subnet.public_2.id]
+  value = [aws_subnet.public_a.id, aws_subnet.public_b.id]
 }
 
 output "ecr_repository_url" {
@@ -20,3 +20,4 @@ output "ecs_cluster_name" {
 output "alb_dns_name" {
   value = aws_lb.devops_alb.dns_name
 }
+
