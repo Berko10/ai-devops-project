@@ -95,8 +95,8 @@ jobs:
       - name: Import all existing resources into Terraform state
         working-directory: terraform/main
         run: |
+          export TF_LOG=DEBUG
           echo "🚀 Importing all existing resources into Terraform state..."
-          terraform init
           resources=$(terraform state list)
           for resource in $resources; do
             echo "Importing resource: $resource"
