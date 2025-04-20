@@ -30,6 +30,7 @@ jobs:
         with:
           terraform_version: '1.6.6'
 
+      
       # ------------------------
       # 🔹 BACKEND APPLY
       # ------------------------
@@ -87,6 +88,20 @@ jobs:
             -backend-config="key=main/terraform.tfstate" \
             -backend-config="region=${{ env.AWS_REGION }}" \
             -backend-config="dynamodb_table=${{ env.DYNAMO_TABLE_NAME }}"
+
+       # ------------------------
+      # 🔹 IMPORT EXISTING RESOURCES
+      # ------------------------
+      - name: Import all existing resources into Terraform state
+        working-directory: terraform/main
+        run: |
+          echo "🚀 Importing all existing resources into Terraform state..."
+          terraform init
+          resources=$(terraform state list)
+          for resource in $resources; do
+            echo "Importing resource: $resource"
+            terraform import $resource || echo "Resource $resource already exists in state"
+          done
       
       # ------------------------
       # 🔹 APPLY ECR בלבד
