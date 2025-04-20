@@ -332,6 +332,6 @@ terraform {
     bucket = "ai-devops-project-tf-state-12346"
     key    = "terraform/state/terraform.tfstate"
     region = "us-east-1"
-    dynamodb_table = "ai-devops-project-locks"
+    dynamodb_table = "terraform-locks"
   }
 }
