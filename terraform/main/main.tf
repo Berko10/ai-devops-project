@@ -211,7 +211,7 @@ resource "aws_ecs_task_definition" "app" {
     }
   }])
   depends_on = [
-  aws_ecr_repository.app_repo
+  aws_ecr_repository.app_repo,
   aws_iam_role.ecs_task_exec_role
   ]
 }
