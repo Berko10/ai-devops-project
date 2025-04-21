@@ -257,11 +257,7 @@ resource "aws_ecs_task_definition" "app" {
       }
     }
   }])
-  depends_on = [
-    aws_ecr_repository.app_repo,
-    aws_iam_role.ecs_task_exec_role
-  ]
-
+ 
   tags = {
     Name    = "devops-task-definition"
     Project = "DevOpsProject"
@@ -286,11 +282,6 @@ resource "aws_ecs_service" "app" {
     container_name   = aws_ecs_task_definition.app.family
     container_port   = 5000
   }
-
-  depends_on = [
-    aws_ecs_task_definition.app,
-    aws_lb.devops_alb
-  ]
 
   tags = {
     Name    = "devops-ecs-service"
