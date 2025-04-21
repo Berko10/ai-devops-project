@@ -25,12 +25,35 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # ------------------------
+      # 🔹 ASSUME NEW AWS ROLE
+      # ------------------------
+      - name: Assume AWS Role
+        id: assume-role
+        run: |
+          CREDS=$(aws sts assume-role \
+            --role-arn arn:aws:iam::123456789012:role/your-new-role-name \
+            --role-session-name github-actions-session \
+            --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
+            --output text)
+
+          export AWS_ACCESS_KEY_ID=$(echo $CREDS | awk '{print $1}')
+          export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | awk '{print $2}')
+          export AWS_SESSION_TOKEN=$(echo $CREDS | awk '{print $3}')
+
+      - name: Configure AWS Credentials (After Assume Role)
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ env.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: '1.6.6'
 
-      
       # ------------------------
       # 🔹 BACKEND APPLY
       # ------------------------
@@ -127,7 +150,6 @@ jobs:
             echo "❌ ECR_REPO_NAME is empty!" && exit 1
           fi
 
-   
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -137,22 +159,13 @@ jobs:
       # ------------------------
       - name: Build and Push Docker Image
         run: |
-          echo "🏗️ Building Docker Image: $IMAGE_URI"
+          echo "🏗️ Building Docker Image: $ECR_REPO_NAME"
           docker build -t $ECR_REPO_NAME ./app
 
-          echo "🏷️ Tagging Docker Image as: $ECR_REPO_NAME
+          echo "🏷️ Tagging Docker Image as: $ECR_REPO_NAME"
 
-          echo "📤 Pushing Docker Image: $ECR_REPO_NAME
+          echo "📤 Pushing Docker Image: $ECR_REPO_NAME"
           docker push $ECR_REPO_NAME
-
-       # ------------------------
-      # 🔹 IMPORT EXISTING RESOURCES
-      # ------------------------
-      # - name: Auto-import existing AWS resources
-      #  working-directory: terraform/main
-      #  run: |
-      #    chmod +x auto-import.sh
-      #    ./auto-import.sh
 
       # ------------------------
       # 🔹 APPLY כל שאר התשתית (ECS וכו')
@@ -178,7 +191,7 @@ jobs:
       # 🔹 בדיקות יוניט
       # ------------------------
       - name: Run Unit Tests
-        working-directory: ./
+        working-directory: ./ 
         run: |
           python -m pip install --upgrade pip
           pip install -r app/requirements.txt
