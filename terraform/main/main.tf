@@ -1,51 +1,9 @@
+###################################### 
+# main.tf - Complete Infra Without Modules 
+###################################### 
+
 provider "aws" {
   region = var.aws_region
-}
-
-######################## 
-# IAM Role for Terraform 
-########################
-
-resource "aws_iam_role" "terraform_execution_role" {
-  name = "terraform-execution-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "ecs.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-
-  tags = {
-    Name    = "terraform-execution-role"
-    Project = "DevOpsProject"
-  }
-}
-
-resource "aws_iam_policy" "terraform_policy" {
-  name        = "terraform-policy"
-  description = "Policy that allows terraform to create and manage resources"
-  policy      = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = "*"
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "terraform_role_attachment" {
-  role       = aws_iam_role.terraform_execution_role.name
-  policy_arn = aws_iam_policy.terraform_policy.arn
 }
 
 ######################## 
@@ -159,6 +117,7 @@ resource "aws_lb" "devops_alb" {
   load_balancer_type               = "application"
   security_groups                  = [aws_security_group.alb_sg.id]
   subnets                          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+  # enable_deletion_protection       = false
   enable_cross_zone_load_balancing = true
 
   tags = {
