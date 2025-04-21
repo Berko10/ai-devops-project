@@ -162,8 +162,11 @@ resource "aws_lb_listener" "devops_listener" {
 
   # שימוש ב-lifecycle כדי להתעלם משינויים שדורשים הרשאות
   lifecycle {
-    ignore_changes = [default_action, tags, tags_all]
+    ignore_changes = all
+    prevent_destroy = true
+    create_before_destroy = false
   }
+  
 }
 
 ######################## 
