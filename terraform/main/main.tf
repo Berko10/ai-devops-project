@@ -4,6 +4,8 @@
 
 provider "aws" {
   region = var.aws_region
+  skip_requesting_account_id  = true
+  skip_metadata_api_check     = true
 }
 
 ######################## 
@@ -306,10 +308,14 @@ resource "aws_ecs_service" "app" {
 # Auto Scaling for ECS 
 ######################## 
 
+locals {
+  scaling_target_id = "service/${aws_ecs_cluster.devops_cluster.name}/${aws_ecs_service.app.name}"
+}
+
 resource "aws_appautoscaling_target" "ecs_scaling_target" {
   max_capacity       = 3
   min_capacity       = 1
-  resource_id        = "service/${aws_ecs_cluster.devops_cluster.name}/${aws_ecs_service.app.name}"
+  resource_id        = local.scaling_target_id
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
   count = 0
@@ -320,10 +326,6 @@ resource "aws_appautoscaling_target" "ecs_scaling_target" {
   }
 }
 
-
-locals {
-  scaling_target_id = "service/${aws_ecs_cluster.devops_cluster.name}/${aws_ecs_service.app.name}"
-}
 
 resource "aws_appautoscaling_policy" "cpu_scaling_policy" {
   name               = "cpu-scaling-policy"
