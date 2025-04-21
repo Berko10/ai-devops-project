@@ -117,7 +117,7 @@ resource "aws_lb" "devops_alb" {
   load_balancer_type               = "application"
   security_groups                  = [aws_security_group.alb_sg.id]
   subnets                          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-  enable_deletion_protection       = false
+  # enable_deletion_protection       = false
   enable_cross_zone_load_balancing = true
 
   tags = {
@@ -267,14 +267,13 @@ resource "aws_ecs_service" "app" {
 
   load_balancer {
     target_group_arn = aws_lb_target_group.devops_target_group.arn
-    container_name   = "devops-app"
+    container_name   = aws_ecs_task_definition.app.family
     container_port   = 5000
   }
 
   depends_on = [
     aws_ecs_task_definition.app,
-    aws_lb.devops_alb,
-    aws_lb_listener.devops_listener
+    aws_lb.devops_alb
   ]
 
   tags = {
