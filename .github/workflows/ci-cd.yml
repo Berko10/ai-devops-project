@@ -148,11 +148,11 @@ jobs:
        # ------------------------
       # 🔹 IMPORT EXISTING RESOURCES
       # ------------------------
-      - name: Auto-import existing AWS resources
-        working-directory: terraform/main
-        run: |
-          chmod +x auto-import.sh
-          ./auto-import.sh
+      # - name: Auto-import existing AWS resources
+      #  working-directory: terraform/main
+      #  run: |
+      #    chmod +x auto-import.sh
+      #    ./auto-import.sh
 
       # ------------------------
       # 🔹 APPLY כל שאר התשתית (ECS וכו')
