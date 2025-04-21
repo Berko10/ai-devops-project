@@ -157,11 +157,13 @@ resource "aws_lb_listener" "devops_listener" {
     target_group_arn = aws_lb_target_group.devops_target_group.arn
   }
 
-  tags = {
-    Name    = "devops-listener"
-    Project = "DevOpsProject"
+  lifecycle {
+    ignore_changes = [
+      default_action,
+      tags,
+      tags_all
+    ]
   }
-}
 
 ######################## 
 # ECS + ECR 
@@ -209,11 +211,20 @@ resource "aws_iam_role" "ecs_task_exec_role" {
     Name    = "ecs-task-execution-role"
     Project = "DevOpsProject"
   }
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = [assume_role_policy]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
   role       = aws_iam_role.ecs_task_exec_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_ecs_task_definition" "app" {
@@ -249,6 +260,15 @@ resource "aws_ecs_task_definition" "app" {
   tags = {
     Name    = "devops-task-definition"
     Project = "DevOpsProject"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      task_definition,
+      desired_count,
+      tags,
+      tags_all
+    ]
   }
 }
 
@@ -292,6 +312,7 @@ resource "aws_appautoscaling_target" "ecs_scaling_target" {
   resource_id        = "service/${aws_ecs_cluster.devops_cluster.name}/${aws_ecs_service.app.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
+  count = 0
 
   tags = {
     Name    = "ecs-scaling-target"
@@ -299,10 +320,15 @@ resource "aws_appautoscaling_target" "ecs_scaling_target" {
   }
 }
 
+
+locals {
+  scaling_target_id = "service/${aws_ecs_cluster.devops_cluster.name}/${aws_ecs_service.app.name}"
+}
+
 resource "aws_appautoscaling_policy" "cpu_scaling_policy" {
   name               = "cpu-scaling-policy"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs_scaling_target.resource_id
+  resource_id        = local.scaling_target_id
   scalable_dimension = aws_appautoscaling_target.ecs_scaling_target.scalable_dimension
   service_namespace  = aws_appautoscaling_target.ecs_scaling_target.service_namespace
 
