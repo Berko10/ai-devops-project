@@ -159,20 +159,41 @@ jobs:
       # ------------------------
       - name: Terraform Apply (All Infra)
         working-directory: terraform/main
+        shell: bash
         run: |
+          set -euo pipefail
+        
+          echo "🔄 Terraform Init"
           terraform init
-          terraform apply -auto-approve -input=false || {
-            ERR=$?
-            echo "Terraform apply failed with exit code $ERR"
-            LOG=$(terraform apply -auto-approve -input=false 2>&1 || true)
-            if echo "$LOG" | grep -q "already exists"; then
-              echo "⚠️ Resource already exists. Continuing..."
-            else
-              echo "$LOG"
-              echo "❌ Unhandled error in backend apply. Exiting."
-              exit $ERR
-            fi
-          }
+        
+          echo "🚀 Running Terraform Plan"
+          PLAN_OUTPUT=$(terraform plan -no-color 2>&1 || true)
+        
+          echo "$PLAN_OUTPUT" | tee plan.log
+        
+          # בודקים אם קיימות שגיאות על משאבים קיימים
+          if echo "$PLAN_OUTPUT" | grep -q "already exists"; then
+             echo "⚠️ Detected resources that already exist. Attempting auto-import..."
+        
+          # נחלץ את כל השורות שבהן יש שגיאת "already exists"
+             echo "$PLAN_OUTPUT" | grep "already exists" | while read -r line; do
+            # דוגמה: "Error: creating VPC: VPC already exists"
+             RESOURCE_TYPE=$(echo "$line" | grep -oE "module\.[^:]+:[^\s]+" | cut -d':' -f2 | xargs)
+             RESOURCE_ID=$(echo "$line" | grep -oE "vpc-[a-zA-Z0-9]+" || true)
+        
+             if [[ -n "$RESOURCE_TYPE" && -n "$RESOURCE_ID" ]]; then
+                echo "📦 Importing $RESOURCE_TYPE with ID $RESOURCE_ID..."
+                terraform import "$RESOURCE_TYPE" "$RESOURCE_ID" || {
+                echo "❌ Failed to import $RESOURCE_TYPE. Exiting."
+                exit 1
+                }
+             fi
+            done
+          fi
+        
+            echo "🚀 Running Terraform Apply"
+            terraform apply -auto-approve -input=false
+
 
       # ------------------------
       # 🔹 בדיקות יוניט
