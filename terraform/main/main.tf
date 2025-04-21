@@ -157,6 +157,14 @@ resource "aws_lb_listener" "devops_listener" {
     target_group_arn = aws_lb_target_group.devops_target_group.arn
   }
 
+  lifecycle {
+    ignore_changes = [
+      default_action,
+      ssl_policy,
+      certificate_arn
+    ]
+  }
+
   tags = {
     Name    = "devops-listener"
     Project = "DevOpsProject"
