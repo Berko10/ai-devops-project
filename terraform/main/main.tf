@@ -167,8 +167,8 @@ resource "aws_lb_listener" "devops_listener" {
     prevent_destroy = true
     create_before_destroy = false
   }
-  */
 }
+*/
 
 ######################## 
 # ECS + ECR 
