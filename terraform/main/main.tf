@@ -252,17 +252,26 @@ resource "aws_ecs_task_definition" "app" {
     logConfiguration = {
       logDriver = "awslogs",
       options = {
-        awslogs-group         = "/ecs/devops-app",
+        awslogs-group         = "${aws_cloudwatch_log_group.ecs_logs.name}",
         awslogs-region        = var.aws_region,
         awslogs-stream-prefix = "devops-app"
       }
     }
   }])
+
+  depends_on = [
+    aws_cloudwatch_log_group.ecs_logs
+  ]
  
   tags = {
     Name    = "devops-task-definition"
     Project = "DevOpsProject"
   }
+}
+
+resource "aws_cloudwatch_log_group" "ecs_logs" {
+  name              = "/ecs/devops-app"
+  retention_in_days = 7
 }
 
 resource "aws_ecs_service" "app" {
@@ -301,7 +310,7 @@ resource "aws_ecs_service" "app" {
 
 # הסרת המשאבים הבעייתיים על ידי הגדרת count=0
 resource "aws_appautoscaling_target" "ecs_scaling_target" {
-  count             = 0  # אל תיצור את המשאב הזה בגלל בעיות הרשאה
+  count             = 1  # אל תיצור את המשאב הזה בגלל בעיות הרשאה
   max_capacity       = 3
   min_capacity       = 1
   resource_id        = "service/${aws_ecs_cluster.devops_cluster.name}/${aws_ecs_service.app.name}"
