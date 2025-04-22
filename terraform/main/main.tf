@@ -247,7 +247,7 @@ resource "aws_ecs_task_definition" "app" {
       containerPort = 5000,
       hostPort      = 5000
     }],
-    /*
+    
     logConfiguration = {
       logDriver = "awslogs",
       options = {
@@ -256,26 +256,26 @@ resource "aws_ecs_task_definition" "app" {
         awslogs-stream-prefix = "devops-app"
       }
     }
-    */
+    
   }])
 
-  /*
+  
   depends_on = [
     aws_cloudwatch_log_group.ecs_logs
   ]
-  */
+  
   tags = {
     Name    = "devops-task-definition"
     Project = "DevOpsProject"
   }
 }
 
-/*
+
 resource "aws_cloudwatch_log_group" "ecs_logs" {
   name              = "/ecs/devops-app-logs"
   retention_in_days = 7
 }
-*/
+
 
 resource "aws_ecs_service" "app" {
   name            = "devops-service"
