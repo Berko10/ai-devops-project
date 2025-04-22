@@ -233,6 +233,47 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
   }
 }
 
+resource "aws_iam_role" "admin_infra_role" {
+  name = "AdminInfraRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        AWS = "arn:aws:iam::${var.account_id}:user/${var.user_name}"
+      },
+      Action = "sts:AssumeRole"
+    }]
+  })
+
+  tags = {
+    Name    = "AdminInfraRole"
+    Project = "DevOpsProject"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "admin_infra_role_attach1" {
+  role       = aws_iam_role.admin_infra_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "admin_infra_role_attach2" {
+  role       = aws_iam_role.admin_infra_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonECRFullAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "admin_infra_role_attach3" {
+  role       = aws_iam_role.admin_infra_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchFullAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "admin_infra_role_attach4" {
+  role       = aws_iam_role.admin_infra_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AutoScalingFullAccess"
+}
+
+
 resource "aws_ecs_task_definition" "app" {
   family                   = "devops-app"
   requires_compatibilities = ["FARGATE"]
