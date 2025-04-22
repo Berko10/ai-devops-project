@@ -158,6 +158,7 @@ jobs:
       # 🔹 APPLY כל שאר התשתית (ECS וכו')
       # ------------------------
       - name: Import Existing AWS Resources to Terraform State & APPLY
+        working-directory: terraform/main
         run: |
           RESOURCES=$(grep 'resource "aws_' main.tf | awk '{print $2, $3}' | sed 's/"//g')
       
