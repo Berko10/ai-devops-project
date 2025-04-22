@@ -270,7 +270,7 @@ resource "aws_ecs_task_definition" "app" {
 }
 
 resource "aws_cloudwatch_log_group" "ecs_logs" {
-  name              = "/ecs/devops-app"
+  name              = "/ecs/devops-app-logs"
   retention_in_days = 7
 }
 
