@@ -153,7 +153,23 @@ jobs:
       #  run: |
       #    chmod +x auto-import.sh
       #    ./auto-import.sh
-
+      - name: Get ARN of IAM Role
+        id: get-role-arn
+        run: |
+          role_name="AdminInfraRole"  
+          arn=$(aws iam get-role --role-name $role_name --query 'Role.Arn' --output text)
+          echo "ARN=$arn"
+          echo "arn=$arn" >> $GITHUB_ENV  
+        
+      - name: Assume Role for Apply
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ env.arn }}
+          role-session-name: GitHubActionsApplySession
+          aws-region: us-east-1
+          
       # ------------------------
       # 🔹 APPLY כל שאר התשתית (ECS וכו')
       # ------------------------
