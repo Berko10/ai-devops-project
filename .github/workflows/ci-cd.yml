@@ -157,42 +157,88 @@ jobs:
       # ------------------------
       # 🔹 APPLY כל שאר התשתית (ECS וכו')
       # ------------------------
-      - name: Terraform Apply (All Infra)
-        working-directory: terraform/main
-        shell: bash
+      - name: Import Existing AWS Resources to Terraform State & APPLY
         run: |
-          set -euo pipefail
-        
-          echo "🔄 Terraform Init"
-          terraform init
-        
-          echo "🚀 Running Terraform Plan"
-          PLAN_OUTPUT=$(terraform plan -no-color 2>&1 || true)
-        
-          echo "$PLAN_OUTPUT" | tee plan.log
-        
-          # בודקים אם קיימות שגיאות על משאבים קיימים
-          if echo "$PLAN_OUTPUT" | grep -q "already exists"; then
-             echo "⚠️ Detected resources that already exist. Attempting auto-import..."
-        
-          # נחלץ את כל השורות שבהן יש שגיאת "already exists"
-             echo "$PLAN_OUTPUT" | grep "already exists" | while read -r line; do
-            # דוגמה: "Error: creating VPC: VPC already exists"
-             RESOURCE_TYPE=$(echo "$line" | grep -oE "module\.[^:]+:[^\s]+" | cut -d':' -f2 | xargs)
-             RESOURCE_ID=$(echo "$line" | grep -oE "vpc-[a-zA-Z0-9]+" || true)
-        
-             if [[ -n "$RESOURCE_TYPE" && -n "$RESOURCE_ID" ]]; then
-                echo "📦 Importing $RESOURCE_TYPE with ID $RESOURCE_ID..."
-                terraform import "$RESOURCE_TYPE" "$RESOURCE_ID" || {
-                echo "❌ Failed to import $RESOURCE_TYPE. Exiting."
-                exit 1
-                }
-             fi
-            done
-          fi
-        
-            echo "🚀 Running Terraform Apply"
-            terraform apply -auto-approve -input=false
+          RESOURCES=$(grep 'resource "aws_' main.tf | awk '{print $2, $3}' | sed 's/"//g')
+      
+          for resource in $RESOURCES; do
+            case $resource in
+              aws_vpc) 
+                for id in $(aws ec2 describe-vpcs --query "Vpcs[*].VpcId" --output text); do 
+                  terraform import aws_vpc.main $id || echo "⚠️ נכשל בייבוא VPC $id"; 
+                done 
+              ;;
+              
+              aws_subnet) 
+                for id in $(aws ec2 describe-subnets --query "Subnets[*].SubnetId" --output text); do 
+                  terraform import aws_subnet.public_a $id || terraform import aws_subnet.public_b $id || echo "⚠️ נכשל בייבוא Subnet $id"; 
+                done 
+              ;;
+              
+              aws_security_group) 
+                for id in $(aws ec2 describe-security-groups --query "SecurityGroups[*].GroupId" --output text); do 
+                  terraform import aws_security_group.alb_sg $id || echo "⚠️ נכשל בייבוא Security Group $id"; 
+                done 
+              ;;
+              
+              aws_lb) 
+                for id in $(aws elbv2 describe-load-balancers --query "LoadBalancers[*].LoadBalancerArn" --output text); do 
+                  terraform import aws_lb.devops_alb $id || echo "⚠️ נכשל בייבוא Load Balancer $id"; 
+                done 
+              ;;
+              
+              aws_lb_target_group) 
+                for id in $(aws elbv2 describe-target-groups --query "TargetGroups[*].TargetGroupArn" --output text); do 
+                  terraform import aws_lb_target_group.devops_target_group $id || echo "⚠️ נכשל בייבוא Target Group $id"; 
+                done 
+              ;;
+              
+              aws_lb_listener) 
+                for id in $(aws elbv2 describe-listeners --query "Listeners[*].ListenerArn" --output text); do 
+                  terraform import aws_lb_listener.devops_listener $id || echo "⚠️ נכשל בייבוא Listener $id"; 
+                done 
+              ;;
+              
+              aws_ecs_cluster) 
+                for id in $(aws ecs list-clusters --query "clusterArns" --output text); do 
+                  terraform import aws_ecs_cluster.devops_cluster $id || echo "⚠️ נכשל בייבוא ECS Cluster $id"; 
+                done 
+              ;;
+              
+              aws_ecs_service) 
+                for id in $(aws ecs list-services --cluster devops-cluster --query "serviceArns" --output text); do 
+                  terraform import aws_ecs_service.app $id || echo "⚠️ נכשל בייבוא ECS Service $id"; 
+                done 
+              ;;
+              
+              aws_ecr_repository) 
+                for id in $(aws ecr describe-repositories --query "repositories[*].repositoryName" --output text); do 
+                  terraform import aws_ecr_repository.app_repo $id || echo "⚠️ נכשל בייבוא ECR Repository $id"; 
+                done 
+              ;;
+              
+              aws_iam_role) 
+                for id in $(aws iam list-roles --query "Roles[*].RoleName" --output text); do 
+                  terraform import aws_iam_role.ecs_task_exec_role $id || echo "⚠️ נכשל בייבוא IAM Role $id"; 
+                done 
+              ;;
+              
+              aws_route_table) 
+                for id in $(aws ec2 describe-route-tables --query "RouteTables[*].RouteTableId" --output text); do 
+                  terraform import aws_route_table.public $id || echo "⚠️ נכשל בייבוא Route Table $id"; 
+                done 
+              ;;
+              
+              *) 
+                echo "⚠️ אין אפשרות לייבוא אוטומטי עבור $resource בשלב זה" 
+              ;;
+            esac
+          done
+      
+          echo "🚀 Running Terraform Apply"
+          terraform apply -auto-approve -input=false
+
+
 
 
       # ------------------------
