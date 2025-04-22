@@ -28,5 +28,5 @@ variable "account_id" {
 variable "user_name" {
   description = "The IAM user name who will assume the role"
   type        = string
-  deafault = "kk_labs_user_866577"
+  default = "kk_labs_user_866577"
 }
