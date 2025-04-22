@@ -150,6 +150,7 @@ resource "aws_lb_target_group" "devops_target_group" {
   }
 }
 
+/*
 resource "aws_lb_listener" "devops_listener" {
   load_balancer_arn = aws_lb.devops_alb.arn
   port              = 80
@@ -166,7 +167,7 @@ resource "aws_lb_listener" "devops_listener" {
     prevent_destroy = true
     create_before_destroy = false
   }
-  
+  */
 }
 
 ######################## 
