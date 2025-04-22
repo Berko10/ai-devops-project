@@ -18,3 +18,15 @@ variable "public_subnet_cidrs" {
   type        = list(string)
   default     = ["10.0.1.0/24", "10.0.2.0/24"]
 }
+
+variable "account_id" {
+  description = "Your AWS Account ID"
+  type        = string
+  default = "076586969151"
+}
+
+variable "user_name" {
+  description = "The IAM user name who will assume the role"
+  type        = string
+  deafault = "kk_labs_user_866577"
+}
